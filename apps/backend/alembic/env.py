@@ -1,9 +1,12 @@
 from logging.config import fileConfig
 
-from adapters.outbound.oracle_adb_26ai.session import engine
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
+
+from adapters.outbound.oracle_adb_26ai import models
+from adapters.outbound.oracle_adb_26ai.session import engine
+from alembic import context
+from config.settings import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -41,6 +44,9 @@ def run_migrations_offline() -> None:
 
     """
     # url = config.get_main_option("sqlalchemy.url")
+    url = (
+        f"oracle+oracledb://{settings.db_user}:{settings.db_password}@{settings.db_dsn}"
+    )
     context.configure(
         url=url,
         target_metadata=target_metadata,

@@ -28,3 +28,18 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 source-dir = "src"
 module-name = ["adapters", "application", "config", "domain"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["src/tests"]
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
