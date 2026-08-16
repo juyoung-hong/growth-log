@@ -17,6 +17,12 @@ class TaskGroupUpdate(BaseModel):
     status: TaskStatus | None = None
 
 
+class TaskGroupProgress(BaseModel):
+    total_tasks: int
+    done_tasks: int
+    percent: int
+
+
 class TaskGroupRead(BaseModel):
     id: int
     category: Scope
@@ -24,3 +30,4 @@ class TaskGroupRead(BaseModel):
     description: str | None
     status: TaskStatus
     is_archived: bool
+    progress: TaskGroupProgress | None = None

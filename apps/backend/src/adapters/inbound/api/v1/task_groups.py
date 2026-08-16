@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from adapters.inbound.api.deps import get_task_group_service
+from adapters.inbound.api.deps import get_task_group_service, get_task_service
 from adapters.inbound.api.schemas.task_group import (
     TaskGroupCreate,
+    TaskGroupProgress,
     TaskGroupRead,
     TaskGroupUpdate,
 )
 from application.services.task_group_service import TaskGroupService
+from application.services.task_service import TaskService
 from domain.common.enums import Scope, TaskStatus
 from domain.common.exceptions import InvalidFieldError
 from domain.exceptions import TaskGroupNotFoundError
@@ -36,12 +38,29 @@ def create_task_group(
 
 @router.get("/{task_group_id}", response_model=TaskGroupRead)
 def get_task_group(
-    task_group_id: int, service: TaskGroupService = Depends(get_task_group_service)
+    task_group_id: int,
+    service: TaskGroupService = Depends(get_task_group_service),
+    task_service: TaskService = Depends(get_task_service),
 ):
     try:
-        return service.get(task_group_id)
+        task_group = service.get(task_group_id)
     except TaskGroupNotFoundError:
         raise HTTPException(status_code=404, detail="작업 그룹을 찾을 수 없습니다.")
+
+    counts = task_service.count_by_status(task_group_id)
+    total = sum(counts.values())
+    done = counts.get(TaskStatus.DONE, 0)
+    percent = round(done / total * 100) if total else 0
+
+    return TaskGroupRead(
+        id=task_group.id,
+        category=task_group.category,
+        name=task_group.name,
+        description=task_group.description,
+        status=task_group.status,
+        is_archived=task_group.is_archived,
+        progress=TaskGroupProgress(total_tasks=total, done_tasks=done, percent=percent),
+    )
 
 
 @router.patch("/{task_group_id}", response_model=TaskGroupRead)
