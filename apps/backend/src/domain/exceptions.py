@@ -20,3 +20,15 @@ class TaskGroupNotFoundError(Exception):
     def __init__(self, task_group_id: int):
         super().__init__(f"task_group {task_group_id} not found")
         self.task_group_id = task_group_id
+
+
+class FileTooLargeError(Exception):
+    def __init__(self, size_bytes: int):
+        super().__init__(f"file too large: {size_bytes} bytes")
+        self.size_bytes = size_bytes
+
+
+class TaskGroupAttachmentNotFoundError(Exception):
+    def __init__(self, attachment_id: int):
+        super().__init__(f"task_group_attachment {attachment_id} not found")
+        self.attachment_id = attachment_id

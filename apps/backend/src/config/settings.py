@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     db_dsn: str
     tns_admin: str
 
+    oci_config_profile: str = "DEFAULT"  # OCI config에 존재하는 프로필 이름
+    oci_bucket_name: str
+
     upload_max_bytes: int = 20 * 1024 * 1024  # 20MB
     image_resize_max_px: int = 2000
     image_jpeg_quality: int = 85
