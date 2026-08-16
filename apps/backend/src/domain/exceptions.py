@@ -32,3 +32,15 @@ class TaskGroupAttachmentNotFoundError(Exception):
     def __init__(self, attachment_id: int):
         super().__init__(f"task_group_attachment {attachment_id} not found")
         self.attachment_id = attachment_id
+
+
+class TaskNotFoundError(Exception):
+    def __init__(self, task_id: int):
+        super().__init__(f"task {task_id} not found")
+        self.task_id = task_id
+
+
+class TaskCommentNotFoundError(Exception):
+    def __init__(self, comment_id: int):
+        super().__init__(f"task_comment {comment_id} not found")
+        self.comment_id = comment_id
