@@ -11,8 +11,14 @@ from adapters.outbound.oracle_adb_26ai.session import engine
 from adapters.outbound.oracle_adb_26ai.task_activity_log_repository import (
     SqlTaskActivityLogRepository,
 )
+from adapters.outbound.oracle_adb_26ai.task_assignee_repository import (
+    SqlTaskAssigneeRepository,
+)
 from adapters.outbound.oracle_adb_26ai.task_comment_repository import (
     SqlTaskCommentRepository,
+)
+from adapters.outbound.oracle_adb_26ai.task_dependency_repository import (
+    SqlTaskDependencyRepository,
 )
 from adapters.outbound.oracle_adb_26ai.task_group_attachment_repository import (
     SqlTaskGroupAttachmentRepository,
@@ -23,7 +29,9 @@ from adapters.outbound.oracle_adb_26ai.task_group_repository import (
 from adapters.outbound.oracle_adb_26ai.task_repository import SqlTaskRepository
 from application.services.attachment_service import AttachmentService
 from application.services.person_service import PersonService
+from application.services.task_assignee_service import TaskAssigneeService
 from application.services.task_comment_service import TaskCommentService
+from application.services.task_dependency_service import TaskDependencyService
 from application.services.task_group_service import TaskGroupService
 from application.services.task_service import TaskService
 
@@ -58,7 +66,29 @@ def get_task_service(session: Session = Depends(get_db_session)) -> TaskService:
         task_repository=SqlTaskRepository(session),
         activity_log_repository=SqlTaskActivityLogRepository(session),
         comment_repository=SqlTaskCommentRepository(session),
+        assignee_repository=SqlTaskAssigneeRepository(session),
+        dependency_repository=SqlTaskDependencyRepository(session),
         task_group_repository=SqlTaskGroupRepository(session),
+    )
+
+
+def get_task_assignee_service(
+    session: Session = Depends(get_db_session),
+) -> TaskAssigneeService:
+    return TaskAssigneeService(
+        assignee_repository=SqlTaskAssigneeRepository(session),
+        task_repository=SqlTaskRepository(session),
+        person_repository=SqlPersonRepository(session),
+        activity_log_repository=SqlTaskActivityLogRepository(session),
+    )
+
+
+def get_task_dependency_service(
+    session: Session = Depends(get_db_session),
+) -> TaskDependencyService:
+    return TaskDependencyService(
+        dependency_repository=SqlTaskDependencyRepository(session),
+        task_repository=SqlTaskRepository(session),
     )
 
 

@@ -44,3 +44,12 @@ class TaskCommentNotFoundError(Exception):
     def __init__(self, comment_id: int):
         super().__init__(f"task_comment {comment_id} not found")
         self.comment_id = comment_id
+
+
+class DependencyTaskGroupMismatchError(Exception):
+    def __init__(self, task_id: int, depends_on_task_id: int):
+        super().__init__(
+            f"task {task_id} and {depends_on_task_id} belong to different task groups"
+        )
+        self.task_id = task_id
+        self.depends_on_task_id = depends_on_task_id
