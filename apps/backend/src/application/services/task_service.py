@@ -14,7 +14,11 @@ from typing import Literal
 from application.ports.outbound.task_activity_log_repository import (
     TaskActivityLogRepository,
 )
+from application.ports.outbound.task_assignee_repository import TaskAssigneeRepository
 from application.ports.outbound.task_comment_repository import TaskCommentRepository
+from application.ports.outbound.task_dependency_repository import (
+    TaskDependencyRepository,
+)
 from application.ports.outbound.task_group_repository import TaskGroupRepository
 from application.ports.outbound.task_repository import TaskRepository
 from domain.common.enums import TaskStatus
@@ -31,11 +35,15 @@ class TaskService:
         task_repository: TaskRepository,
         activity_log_repository: TaskActivityLogRepository,
         comment_repository: TaskCommentRepository,
+        assignee_repository: TaskAssigneeRepository,
+        dependency_repository: TaskDependencyRepository,
         task_group_repository: TaskGroupRepository,
     ) -> None:
         self.task_repository = task_repository
         self.activity_log_repository = activity_log_repository
         self.comment_repository = comment_repository
+        self.assignee_repository = assignee_repository
+        self.dependency_repository = dependency_repository
         self.task_group_repository = task_group_repository
 
     def create(
@@ -157,13 +165,13 @@ class TaskService:
         return counts
 
     def delete(self, task_id: int) -> None:
-        """Task를 삭제한다. 댓글·활동이력을 먼저 지운 뒤 Task 행을 지운다.
-        담당자·선행 관계·미팅 연결은 아직 테이블이 없어서 이 두 개만
-        지우면 된다 — 5·6단계에서 해당 테이블이 생기면 여기에 순서를
-        추가한다(API 설계 5.2절 삭제 캐스케이드)."""
+        """Task를 삭제한다. API 설계 5.2절 순서: 댓글 → 활동이력 →
+        담당자 → 선행 관계(양방향) → (미팅 연결, 아직 없음) → Task 행."""
         self.get(task_id)
         self.comment_repository.delete_by_task(task_id)
         self.activity_log_repository.delete_by_task(task_id)
+        self.assignee_repository.delete_by_task(task_id)
+        self.dependency_repository.delete_by_task(task_id)
         self.task_repository.delete(task_id)
 
     def _ensure_task_group_exists(self, task_group_id: int) -> None:

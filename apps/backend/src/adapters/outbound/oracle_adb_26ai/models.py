@@ -197,3 +197,57 @@ class TaskCommentTable(SQLModel, table=True):
             TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
         ),
     )
+
+
+class TaskAssigneeTable(SQLModel, table=True):
+    __tablename__ = "task_assignee"
+    __table_args__ = (Index("ix_task_assignee_person", "person_id"),)
+
+    task_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("task.id", name="fk_task_assignee_task"),
+            primary_key=True,
+        )
+    )
+    person_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("person.id", name="fk_task_assignee_person"),
+            primary_key=True,
+        )
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
+        ),
+    )
+
+
+class TaskDependencyTable(SQLModel, table=True):
+    __tablename__ = "task_dependency"
+    __table_args__ = (
+        Index("ix_task_dependency_depends_on_task", "depends_on_task_id"),
+    )
+
+    task_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("task.id", name="fk_task_dependency_task"),
+            primary_key=True,
+        )
+    )
+    depends_on_task_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("task.id", name="fk_task_dependency_depends_on_task"),
+            primary_key=True,
+        )
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
+        ),
+    )

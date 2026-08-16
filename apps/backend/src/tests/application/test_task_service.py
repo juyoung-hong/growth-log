@@ -131,3 +131,33 @@ def test_상태별_개수를_센다(task_service: TaskService, task_group_reposi
 
     assert counts[TaskStatus.DONE] == 1
     assert counts[TaskStatus.PENDING] == 1
+
+
+def test_삭제하면_담당자와_선행관계도_함께_지워진다(
+    task_service: TaskService,
+    task_group_repository,
+    assignee_repository,
+    dependency_repository,
+    person_repository,
+) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    a = task_service.create(task_group_id=task_group.id, name="A")
+    b = task_service.create(task_group_id=task_group.id, name="B")
+    from domain.person import Person
+
+    person = person_repository.add(
+        Person(id=None, category=Scope.COMPANY, name="홍주영")
+    )
+    assignee_repository.add(a.id, person.id)
+    dependency_repository.add(a.id, b.id)  # a → b
+    dependency_repository.add(b.id, a.id)  # b → a (양방향 삭제 확인용)
+
+    task_service.delete(a.id)
+
+    assert not assignee_repository.exists(a.id, person.id)
+    assert not dependency_repository.exists(a.id, b.id)
+    assert not dependency_repository.exists(
+        b.id, a.id
+    )  # depends_on_task_id 쪽도 지워짐

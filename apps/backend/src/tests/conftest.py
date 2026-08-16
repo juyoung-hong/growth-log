@@ -11,7 +11,11 @@ from application.ports.outbound.person_repository import PersonRepository
 from application.ports.outbound.task_activity_log_repository import (
     TaskActivityLogRepository,
 )
+from application.ports.outbound.task_assignee_repository import TaskAssigneeRepository
 from application.ports.outbound.task_comment_repository import TaskCommentRepository
+from application.ports.outbound.task_dependency_repository import (
+    TaskDependencyRepository,
+)
 from application.ports.outbound.task_group_attachment_repository import (
     TaskGroupAttachmentRepository,
 )
@@ -19,7 +23,9 @@ from application.ports.outbound.task_group_repository import TaskGroupRepository
 from application.ports.outbound.task_repository import TaskRepository
 from application.services.attachment_service import AttachmentService
 from application.services.person_service import PersonService
+from application.services.task_assignee_service import TaskAssigneeService
 from application.services.task_comment_service import TaskCommentService
+from application.services.task_dependency_service import TaskDependencyService
 from application.services.task_group_service import TaskGroupService
 from application.services.task_service import TaskService
 from domain.common.enums import Scope, TaskStatus
@@ -68,9 +74,14 @@ class FakePersonRepository(PersonRepository):
 
 
 @pytest.fixture
-def person_service() -> PersonService:
+def person_repository() -> FakePersonRepository:
+    return FakePersonRepository()
+
+
+@pytest.fixture
+def person_service(person_repository: FakePersonRepository) -> PersonService:
     """DB 없이 동작하는 PersonService. 매 테스트마다 빈 저장소로 새로 시작한다."""
-    return PersonService(FakePersonRepository())
+    return PersonService(person_repository)
 
 
 class FakeTaskGroupRepository(TaskGroupRepository):
@@ -281,12 +292,16 @@ def task_service(
     task_repository: FakeTaskRepository,
     activity_log_repository: FakeTaskActivityLogRepository,
     task_comment_repository: FakeTaskCommentRepository,
+    assignee_repository: FakeTaskAssigneeRepository,
+    dependency_repository: FakeTaskDependencyRepository,
     task_group_repository: FakeTaskGroupRepository,
 ) -> TaskService:
     return TaskService(
         task_repository=task_repository,
         activity_log_repository=activity_log_repository,
         comment_repository=task_comment_repository,
+        assignee_repository=assignee_repository,
+        dependency_repository=dependency_repository,
         task_group_repository=task_group_repository,
     )
 
@@ -298,4 +313,82 @@ def task_comment_service(
 ) -> TaskCommentService:
     return TaskCommentService(
         comment_repository=task_comment_repository, task_repository=task_repository
+    )
+
+
+class FakeTaskAssigneeRepository(TaskAssigneeRepository):
+    def __init__(self) -> None:
+        self._store: set[tuple[int, int]] = set()
+
+    def add(self, task_id: int, person_id: int) -> None:
+        self._store.add((task_id, person_id))
+
+    def remove(self, task_id: int, person_id: int) -> None:
+        self._store.discard((task_id, person_id))
+
+    def exists(self, task_id: int, person_id: int) -> bool:
+        return (task_id, person_id) in self._store
+
+    def list_person_ids(self, task_id: int) -> list[int]:
+        return [pid for (tid, pid) in self._store if tid == task_id]
+
+    def delete_by_task(self, task_id: int) -> None:
+        self._store = {pair for pair in self._store if pair[0] != task_id}
+
+    def is_person_referenced(self, person_id: int) -> bool:
+        return any(pid == person_id for (_, pid) in self._store)
+
+
+class FakeTaskDependencyRepository(TaskDependencyRepository):
+    def __init__(self) -> None:
+        self._store: set[tuple[int, int]] = set()
+
+    def add(self, task_id: int, depends_on_task_id: int) -> None:
+        self._store.add((task_id, depends_on_task_id))
+
+    def remove(self, task_id: int, depends_on_task_id: int) -> None:
+        self._store.discard((task_id, depends_on_task_id))
+
+    def exists(self, task_id: int, depends_on_task_id: int) -> bool:
+        return (task_id, depends_on_task_id) in self._store
+
+    def list_depends_on_ids(self, task_id: int) -> list[int]:
+        return [d for (t, d) in self._store if t == task_id]
+
+    def delete_by_task(self, task_id: int) -> None:
+        self._store = {pair for pair in self._store if task_id not in pair}
+
+
+@pytest.fixture
+def assignee_repository() -> FakeTaskAssigneeRepository:
+    return FakeTaskAssigneeRepository()
+
+
+@pytest.fixture
+def dependency_repository() -> FakeTaskDependencyRepository:
+    return FakeTaskDependencyRepository()
+
+
+@pytest.fixture
+def task_assignee_service(
+    assignee_repository: FakeTaskAssigneeRepository,
+    task_repository: FakeTaskRepository,
+    person_repository: FakePersonRepository,
+    activity_log_repository: FakeTaskActivityLogRepository,
+) -> TaskAssigneeService:
+    return TaskAssigneeService(
+        assignee_repository=assignee_repository,
+        task_repository=task_repository,
+        person_repository=person_repository,
+        activity_log_repository=activity_log_repository,
+    )
+
+
+@pytest.fixture
+def task_dependency_service(
+    dependency_repository: FakeTaskDependencyRepository,
+    task_repository: FakeTaskRepository,
+) -> TaskDependencyService:
+    return TaskDependencyService(
+        dependency_repository=dependency_repository, task_repository=task_repository
     )
