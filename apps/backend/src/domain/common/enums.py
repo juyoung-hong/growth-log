@@ -19,3 +19,15 @@ class Scope(str, Enum):
 
     COMPANY = "회사"
     PERSONAL = "개인"
+
+
+class TaskStatus(str, Enum):
+    """레벨2·레벨3이 공유하는 진행 상태.
+
+    레벨2 기본값은 '진행중', 레벨3 기본값은 '보류'로 서로 다르다 —
+    값 목록 자체는 같아서 여기 하나로 모아둔다.
+    """
+
+    PENDING = "보류"
+    IN_PROGRESS = "진행중"
+    DONE = "완료"

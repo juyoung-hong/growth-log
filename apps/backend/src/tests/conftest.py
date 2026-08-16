@@ -5,9 +5,12 @@ from __future__ import annotations
 import pytest
 
 from application.ports.outbound.person_repository import PersonRepository
+from application.ports.outbound.task_group_repository import TaskGroupRepository
 from application.services.person_service import PersonService
-from domain.common.enums import Scope
+from application.services.task_group_service import TaskGroupService
+from domain.common.enums import Scope, TaskStatus
 from domain.person import Person
+from domain.task_group import TaskGroup
 
 
 class FakePersonRepository(PersonRepository):
@@ -50,3 +53,48 @@ class FakePersonRepository(PersonRepository):
 def person_service() -> PersonService:
     """DB 없이 동작하는 PersonService. 매 테스트마다 빈 저장소로 새로 시작한다."""
     return PersonService(FakePersonRepository())
+
+
+class FakeTaskGroupRepository(TaskGroupRepository):
+    """테스트용 인메모리 TaskGroupRepository."""
+
+    def __init__(self) -> None:
+        self._store: dict[int, TaskGroup] = {}
+        self._next_id = 1
+
+    def add(self, task_group: TaskGroup) -> TaskGroup:
+        task_group.id = self._next_id
+        self._store[task_group.id] = task_group
+        self._next_id += 1
+        return task_group
+
+    def get(self, task_group_id: int) -> TaskGroup | None:
+        return self._store.get(task_group_id)
+
+    def list(
+        self,
+        category: Scope | None = None,
+        status: TaskStatus | None = None,
+        include_archived: bool = False,
+    ) -> list[TaskGroup]:
+        values = list(self._store.values())
+        if not include_archived:
+            values = [v for v in values if not v.is_archived]
+        if category:
+            values = [v for v in values if v.category == category]
+        if status:
+            values = [v for v in values if v.status == status]
+        return values
+
+    def update(self, task_group: TaskGroup) -> TaskGroup:
+        self._store[task_group.id] = task_group
+        return task_group
+
+    def delete(self, task_group_id: int) -> None:
+        self._store.pop(task_group_id, None)
+
+
+@pytest.fixture
+def task_group_service() -> TaskGroupService:
+    """DB 없이 동작하는 TaskGroupService. 매 테스트마다 빈 저장소로 새로 시작한다."""
+    return TaskGroupService(FakeTaskGroupRepository())
