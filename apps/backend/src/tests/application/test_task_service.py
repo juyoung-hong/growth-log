@@ -189,3 +189,29 @@ def test_삭제하면_미팅_연결도_함께_지워진다(
     task_service.delete(task.id)
 
     assert not meeting_task_repository.exists(meeting.id, task.id)
+
+
+def test_일반_필드를_수정한다(task_service: TaskService, task_group_repository) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(task_group_id=task_group.id, name="원래 이름")
+
+    updated = task_service.update(task.id, name="바뀐 이름", estimated_days=3)
+
+    assert updated.name == "바뀐 이름"
+    assert updated.estimated_days == 3
+
+
+def test_같은_상태로_바꾸면_아무일도_안_일어난다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(task_group_id=task_group.id, name="작업")
+
+    task_service.change_status(task.id, task.status)
+
+    logs = task_service.list_activity_log(task.id)
+    assert len(logs) == 1  # 등록 이벤트만 있고, 상태 변경 이벤트는 추가로 안 남음

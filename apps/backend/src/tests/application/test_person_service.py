@@ -6,7 +6,11 @@ import pytest
 
 from application.services.person_service import PersonService
 from domain.common.enums import Scope
-from domain.exceptions import EmailAlreadyExistsError, PersonNotFoundError
+from domain.exceptions import (
+    EmailAlreadyExistsError,
+    PersonNotFoundError,
+    PersonReferencedError,
+)
 
 
 def test_인물을_생성한다(person_service: PersonService) -> None:
@@ -66,3 +70,21 @@ def test_삭제한다(person_service: PersonService) -> None:
     person_service.delete(created.id)
     with pytest.raises(PersonNotFoundError):
         person_service.get(created.id)
+
+
+def test_다른_사람이_쓰는_이메일로_수정하면_예외(person_service: PersonService) -> None:
+    person_service.create(category=Scope.COMPANY, name="A", email="a@example.com")
+    b = person_service.create(category=Scope.PERSONAL, name="B", email="b@example.com")
+
+    with pytest.raises(EmailAlreadyExistsError):
+        person_service.update(b.id, email="a@example.com")
+
+
+def test_참조_중인_인물을_삭제하면_예외(
+    person_service: PersonService, person_repository
+) -> None:
+    person = person_service.create(category=Scope.COMPANY, name="담당자")
+    person_repository.referenced_ids.add(person.id)
+
+    with pytest.raises(PersonReferencedError):
+        person_service.delete(person.id)

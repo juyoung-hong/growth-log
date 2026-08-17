@@ -102,3 +102,8 @@ def test_연결을_제거한다(
     meeting_task_service.remove(meeting.id, task.id)
 
     assert meeting_task_service.list(meeting.id) == []
+
+
+def test_없는_Task로_역조회하면_예외(meeting_task_service: MeetingTaskService) -> None:
+    with pytest.raises(TaskNotFoundError):
+        meeting_task_service.list_meetings_by_task(999)
