@@ -6,6 +6,11 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from application.ports.outbound.meeting_attendee_repository import (
+    MeetingAttendeeRepository,
+)
+from application.ports.outbound.meeting_repository import MeetingRepository
+from application.ports.outbound.meeting_task_repository import MeetingTaskRepository
 from application.ports.outbound.object_storage_port import ObjectStoragePort
 from application.ports.outbound.person_repository import PersonRepository
 from application.ports.outbound.task_activity_log_repository import (
@@ -22,6 +27,9 @@ from application.ports.outbound.task_group_attachment_repository import (
 from application.ports.outbound.task_group_repository import TaskGroupRepository
 from application.ports.outbound.task_repository import TaskRepository
 from application.services.attachment_service import AttachmentService
+from application.services.meeting_attendee_service import MeetingAttendeeService
+from application.services.meeting_service import MeetingService
+from application.services.meeting_task_service import MeetingTaskService
 from application.services.person_service import PersonService
 from application.services.task_assignee_service import TaskAssigneeService
 from application.services.task_comment_service import TaskCommentService
@@ -29,6 +37,7 @@ from application.services.task_dependency_service import TaskDependencyService
 from application.services.task_group_service import TaskGroupService
 from application.services.task_service import TaskService
 from domain.common.enums import Scope, TaskStatus
+from domain.meeting import Meeting
 from domain.person import Person
 from domain.task import Task
 from domain.task_activity_log import TaskActivityLog
@@ -294,6 +303,7 @@ def task_service(
     task_comment_repository: FakeTaskCommentRepository,
     assignee_repository: FakeTaskAssigneeRepository,
     dependency_repository: FakeTaskDependencyRepository,
+    meeting_task_repository: FakeMeetingTaskRepository,
     task_group_repository: FakeTaskGroupRepository,
 ) -> TaskService:
     return TaskService(
@@ -302,6 +312,7 @@ def task_service(
         comment_repository=task_comment_repository,
         assignee_repository=assignee_repository,
         dependency_repository=dependency_repository,
+        meeting_task_repository=meeting_task_repository,
         task_group_repository=task_group_repository,
     )
 
@@ -391,4 +402,134 @@ def task_dependency_service(
 ) -> TaskDependencyService:
     return TaskDependencyService(
         dependency_repository=dependency_repository, task_repository=task_repository
+    )
+
+
+class FakeMeetingRepository(MeetingRepository):
+    def __init__(self) -> None:
+        self._store: dict[int, Meeting] = {}
+        self._next_id = 1
+
+    def add(self, meeting: Meeting) -> Meeting:
+        meeting.id = self._next_id
+        self._store[meeting.id] = meeting
+        self._next_id += 1
+        return meeting
+
+    def get(self, meeting_id: int) -> Meeting | None:
+        return self._store.get(meeting_id)
+
+    def list(self, task_group_id: int) -> list[Meeting]:
+        return [m for m in self._store.values() if m.task_group_id == task_group_id]
+
+    def update(self, meeting: Meeting) -> Meeting:
+        self._store[meeting.id] = meeting
+        return meeting
+
+    def delete(self, meeting_id: int) -> None:
+        self._store.pop(meeting_id, None)
+
+
+class FakeMeetingAttendeeRepository(MeetingAttendeeRepository):
+    def __init__(self) -> None:
+        self._store: set[tuple[int, int]] = set()
+
+    def add(self, meeting_id: int, person_id: int) -> None:
+        self._store.add((meeting_id, person_id))
+
+    def remove(self, meeting_id: int, person_id: int) -> None:
+        self._store.discard((meeting_id, person_id))
+
+    def exists(self, meeting_id: int, person_id: int) -> bool:
+        return (meeting_id, person_id) in self._store
+
+    def list_person_ids(self, meeting_id: int) -> list[int]:
+        return [pid for (mid, pid) in self._store if mid == meeting_id]
+
+    def delete_by_meeting(self, meeting_id: int) -> None:
+        self._store = {pair for pair in self._store if pair[0] != meeting_id}
+
+    def is_person_referenced(self, person_id: int) -> bool:
+        return any(pid == person_id for (_, pid) in self._store)
+
+
+class FakeMeetingTaskRepository(MeetingTaskRepository):
+    def __init__(self) -> None:
+        self._store: set[tuple[int, int]] = set()
+
+    def add(self, meeting_id: int, task_id: int) -> None:
+        self._store.add((meeting_id, task_id))
+
+    def remove(self, meeting_id: int, task_id: int) -> None:
+        self._store.discard((meeting_id, task_id))
+
+    def exists(self, meeting_id: int, task_id: int) -> bool:
+        return (meeting_id, task_id) in self._store
+
+    def list_task_ids(self, meeting_id: int) -> list[int]:
+        return [tid for (mid, tid) in self._store if mid == meeting_id]
+
+    def list_meeting_ids_by_task(self, task_id: int) -> list[int]:
+        return [mid for (mid, tid) in self._store if tid == task_id]
+
+    def delete_by_meeting(self, meeting_id: int) -> None:
+        self._store = {pair for pair in self._store if pair[0] != meeting_id}
+
+    def delete_by_task(self, task_id: int) -> None:
+        self._store = {pair for pair in self._store if pair[1] != task_id}
+
+
+@pytest.fixture
+def meeting_repository() -> FakeMeetingRepository:
+    return FakeMeetingRepository()
+
+
+@pytest.fixture
+def meeting_attendee_repository() -> FakeMeetingAttendeeRepository:
+    return FakeMeetingAttendeeRepository()
+
+
+@pytest.fixture
+def meeting_task_repository() -> FakeMeetingTaskRepository:
+    return FakeMeetingTaskRepository()
+
+
+@pytest.fixture
+def meeting_service(
+    meeting_repository: FakeMeetingRepository,
+    meeting_attendee_repository: FakeMeetingAttendeeRepository,
+    meeting_task_repository: FakeMeetingTaskRepository,
+    task_group_repository: FakeTaskGroupRepository,
+) -> MeetingService:
+    return MeetingService(
+        meeting_repository=meeting_repository,
+        attendee_repository=meeting_attendee_repository,
+        task_link_repository=meeting_task_repository,
+        task_group_repository=task_group_repository,
+    )
+
+
+@pytest.fixture
+def meeting_attendee_service(
+    meeting_attendee_repository: FakeMeetingAttendeeRepository,
+    meeting_repository: FakeMeetingRepository,
+    person_repository: FakePersonRepository,
+) -> MeetingAttendeeService:
+    return MeetingAttendeeService(
+        attendee_repository=meeting_attendee_repository,
+        meeting_repository=meeting_repository,
+        person_repository=person_repository,
+    )
+
+
+@pytest.fixture
+def meeting_task_service(
+    meeting_task_repository: FakeMeetingTaskRepository,
+    meeting_repository: FakeMeetingRepository,
+    task_repository: FakeTaskRepository,
+) -> MeetingTaskService:
+    return MeetingTaskService(
+        task_link_repository=meeting_task_repository,
+        meeting_repository=meeting_repository,
+        task_repository=task_repository,
     )

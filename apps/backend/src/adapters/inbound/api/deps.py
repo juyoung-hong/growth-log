@@ -6,6 +6,13 @@ from sqlmodel import Session
 from adapters.outbound.oci_object_storage.oci_object_storage_adapter import (
     object_storage_adapter,
 )
+from adapters.outbound.oracle_adb_26ai.meeting_attendee_repository import (
+    SqlMeetingAttendeeRepository,
+)
+from adapters.outbound.oracle_adb_26ai.meeting_repository import SqlMeetingRepository
+from adapters.outbound.oracle_adb_26ai.meeting_task_repository import (
+    SqlMeetingTaskRepository,
+)
 from adapters.outbound.oracle_adb_26ai.person_repository import SqlPersonRepository
 from adapters.outbound.oracle_adb_26ai.session import engine
 from adapters.outbound.oracle_adb_26ai.task_activity_log_repository import (
@@ -28,6 +35,9 @@ from adapters.outbound.oracle_adb_26ai.task_group_repository import (
 )
 from adapters.outbound.oracle_adb_26ai.task_repository import SqlTaskRepository
 from application.services.attachment_service import AttachmentService
+from application.services.meeting_attendee_service import MeetingAttendeeService
+from application.services.meeting_service import MeetingService
+from application.services.meeting_task_service import MeetingTaskService
 from application.services.person_service import PersonService
 from application.services.task_assignee_service import TaskAssigneeService
 from application.services.task_comment_service import TaskCommentService
@@ -97,5 +107,46 @@ def get_task_comment_service(
 ) -> TaskCommentService:
     return TaskCommentService(
         comment_repository=SqlTaskCommentRepository(session),
+        task_repository=SqlTaskRepository(session),
+    )
+
+
+def get_task_service(session: Session = Depends(get_db_session)) -> TaskService:
+    return TaskService(
+        task_repository=SqlTaskRepository(session),
+        activity_log_repository=SqlTaskActivityLogRepository(session),
+        comment_repository=SqlTaskCommentRepository(session),
+        assignee_repository=SqlTaskAssigneeRepository(session),
+        dependency_repository=SqlTaskDependencyRepository(session),
+        meeting_task_repository=SqlMeetingTaskRepository(session),
+        task_group_repository=SqlTaskGroupRepository(session),
+    )
+
+
+def get_meeting_service(session: Session = Depends(get_db_session)) -> MeetingService:
+    return MeetingService(
+        meeting_repository=SqlMeetingRepository(session),
+        attendee_repository=SqlMeetingAttendeeRepository(session),
+        task_link_repository=SqlMeetingTaskRepository(session),
+        task_group_repository=SqlTaskGroupRepository(session),
+    )
+
+
+def get_meeting_attendee_service(
+    session: Session = Depends(get_db_session),
+) -> MeetingAttendeeService:
+    return MeetingAttendeeService(
+        attendee_repository=SqlMeetingAttendeeRepository(session),
+        meeting_repository=SqlMeetingRepository(session),
+        person_repository=SqlPersonRepository(session),
+    )
+
+
+def get_meeting_task_service(
+    session: Session = Depends(get_db_session),
+) -> MeetingTaskService:
+    return MeetingTaskService(
+        task_link_repository=SqlMeetingTaskRepository(session),
+        meeting_repository=SqlMeetingRepository(session),
         task_repository=SqlTaskRepository(session),
     )

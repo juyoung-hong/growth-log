@@ -2,7 +2,11 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from adapters.outbound.oracle_adb_26ai.models import PersonTable, TaskAssigneeTable
+from adapters.outbound.oracle_adb_26ai.models import (
+    MeetingAttendeeTable,
+    PersonTable,
+    TaskAssigneeTable,
+)
 from application.ports.outbound.person_repository import PersonRepository
 from domain.common.enums import Scope
 from domain.person import Person
@@ -67,10 +71,15 @@ class SqlPersonRepository(PersonRepository):
         return self._to_domain(row) if row else None
 
     def is_referenced(self, person_id: int) -> bool:
-        # meeting_attendee 테이블은 아직 없습니다(로드맵 6단계). 그 테이블이
-        # 생기면 아래 or_ 조건에 하나 더 추가하면 됩니다.
-        stmt = select(TaskAssigneeTable).where(TaskAssigneeTable.person_id == person_id)
-        return self.session.exec(stmt).first() is not None
+        assignee_stmt = select(TaskAssigneeTable).where(
+            TaskAssigneeTable.person_id == person_id
+        )
+        if self.session.exec(assignee_stmt).first() is not None:
+            return True
+        attendee_stmt = select(MeetingAttendeeTable).where(
+            MeetingAttendeeTable.person_id == person_id
+        )
+        return self.session.exec(attendee_stmt).first() is not None
 
     @staticmethod
     def _to_domain(row: PersonTable) -> Person:
