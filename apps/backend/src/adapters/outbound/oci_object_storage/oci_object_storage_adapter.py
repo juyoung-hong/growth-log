@@ -44,6 +44,22 @@ class OciObjectStorageAdapter(ObjectStoragePort):
             self._namespace = self._client.get_namespace().data
         return self._namespace
 
+    def download(self, path: str) -> bytes:
+        response = self._client.get_object(
+            namespace_name=self._get_namespace(),
+            bucket_name=self._bucket_name,
+            object_name=path,
+        )
+        return response.data.content
+
+    def get_used_bytes(self) -> int:
+        response = self._client.get_bucket(
+            namespace_name=self._get_namespace(),
+            bucket_name=self._bucket_name,
+            fields=["approximateSize"],
+        )
+        return response.data.approximate_size or 0
+
 
 # 요청마다 새로 만들지 않고 앱 전체에서 하나만 쓴다 — session.py의 engine과 같은 이유.
 object_storage_adapter = OciObjectStorageAdapter()

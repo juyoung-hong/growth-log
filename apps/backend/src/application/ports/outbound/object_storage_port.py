@@ -21,3 +21,13 @@ class ObjectStoragePort(ABC):
     def delete(self, path: str) -> None:
         """path의 객체를 삭제한다. 이미 없어도 예외를 던지지 않는다."""
         raise NotImplementedError
+
+    @abstractmethod
+    def download(self, path: str) -> bytes:
+        """path의 객체 내용을 그대로 반환한다. export zip 구성에 쓰인다."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_used_bytes(self) -> int:
+        """버킷 전체 사용량(바이트)의 근사치. 사용량 조회에 쓰인다."""
+        raise NotImplementedError
