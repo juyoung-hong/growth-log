@@ -1,6 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from adapters.inbound.api.deps import get_task_comment_service, get_task_service
+from adapters.inbound.api.deps import (
+    get_meeting_attendee_service,
+    get_meeting_service,
+    get_meeting_task_service,
+    get_task_comment_service,
+    get_task_service,
+)
+from adapters.inbound.api.schemas.meeting import MeetingRead
 from adapters.inbound.api.schemas.task import (
     TaskActivityLogRead,
     TaskCreate,
@@ -14,6 +21,10 @@ from adapters.inbound.api.schemas.task_comment import (
     TaskCommentRead,
     TaskCommentUpdate,
 )
+from adapters.inbound.api.v1.meetings import build_meeting_read
+from application.services.meeting_attendee_service import MeetingAttendeeService
+from application.services.meeting_service import MeetingService
+from application.services.meeting_task_service import MeetingTaskService
 from application.services.task_comment_service import TaskCommentService
 from application.services.task_service import TaskService
 from domain.common.exceptions import InvalidFieldError
@@ -167,3 +178,20 @@ def delete_comment(
         service.delete(comment_id)
     except TaskCommentNotFoundError:
         raise HTTPException(status_code=404, detail="댓글을 찾을 수 없습니다.")
+
+
+@router.get("/tasks/{task_id}/meetings", response_model=list[MeetingRead])
+def list_task_meetings(
+    task_id: int,
+    meeting_service: MeetingService = Depends(get_meeting_service),
+    task_link_service: MeetingTaskService = Depends(get_meeting_task_service),
+    attendee_service: MeetingAttendeeService = Depends(get_meeting_attendee_service),
+):
+    try:
+        meeting_ids = task_link_service.list_meetings_by_task(task_id)
+    except TaskNotFoundError:
+        raise HTTPException(status_code=404, detail="Task를 찾을 수 없습니다.")
+    meetings = [meeting_service.get(mid) for mid in meeting_ids]
+    return [
+        build_meeting_read(m, attendee_service, task_link_service) for m in meetings
+    ]

@@ -161,3 +161,31 @@ def test_삭제하면_담당자와_선행관계도_함께_지워진다(
     assert not dependency_repository.exists(
         b.id, a.id
     )  # depends_on_task_id 쪽도 지워짐
+
+
+def test_삭제하면_미팅_연결도_함께_지워진다(
+    task_service: TaskService,
+    task_group_repository,
+    meeting_repository,
+    meeting_task_repository,
+) -> None:
+    from datetime import datetime, timezone
+
+    from domain.meeting import Meeting
+
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(task_group_id=task_group.id, name="작업")
+    meeting = meeting_repository.add(
+        Meeting(
+            id=None,
+            task_group_id=task_group.id,
+            scheduled_at=datetime(2026, 8, 20, 9, 0, tzinfo=timezone.utc),
+        )
+    )
+    meeting_task_repository.add(meeting.id, task.id)
+
+    task_service.delete(task.id)
+
+    assert not meeting_task_repository.exists(meeting.id, task.id)

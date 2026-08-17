@@ -251,3 +251,79 @@ class TaskDependencyTable(SQLModel, table=True):
             TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
         ),
     )
+
+
+class MeetingTable(SQLModel, table=True):
+    __tablename__ = "meeting"
+    __table_args__ = (Index("ix_meeting_task_group", "task_group_id"),)
+
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, Identity(always=True), primary_key=True),
+    )
+    task_group_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("task_group.id", name="fk_meeting_task_group"),
+            nullable=False,
+        )
+    )
+    status: str = Field(
+        default="예정",
+        sa_column=Column(String(10), nullable=False, server_default=text("'예정'")),
+    )
+    scheduled_at: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False))
+    agenda: str | None = Field(default=None, sa_column=Column(CLOB))
+    content: str | None = Field(default=None, sa_column=Column(CLOB))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
+        ),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
+        ),
+    )
+
+
+class MeetingAttendeeTable(SQLModel, table=True):
+    __tablename__ = "meeting_attendee"
+    __table_args__ = (Index("ix_meeting_attendee_person", "person_id"),)
+
+    meeting_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("meeting.id", name="fk_meeting_attendee_meeting"),
+            primary_key=True,
+        )
+    )
+    person_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("person.id", name="fk_meeting_attendee_person"),
+            primary_key=True,
+        )
+    )
+
+
+class MeetingTaskTable(SQLModel, table=True):
+    __tablename__ = "meeting_task"
+    __table_args__ = (Index("ix_meeting_task_task", "task_id"),)
+
+    meeting_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("meeting.id", name="fk_meeting_task_meeting"),
+            primary_key=True,
+        )
+    )
+    task_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("task.id", name="fk_meeting_task_task"),
+            primary_key=True,
+        )
+    )

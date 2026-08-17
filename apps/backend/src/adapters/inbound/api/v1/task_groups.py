@@ -1,12 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from adapters.inbound.api.deps import get_task_group_service, get_task_service
+from adapters.inbound.api.deps import (
+    get_attachment_service,
+    get_meeting_service,
+    get_task_group_service,
+    get_task_service,
+)
 from adapters.inbound.api.schemas.task_group import (
     TaskGroupCreate,
     TaskGroupProgress,
     TaskGroupRead,
     TaskGroupUpdate,
 )
+from application.services.attachment_service import AttachmentService
+from application.services.meeting_service import MeetingService
 from application.services.task_group_service import TaskGroupService
 from application.services.task_service import TaskService
 from domain.common.enums import Scope, TaskStatus
@@ -79,9 +86,21 @@ def update_task_group(
 
 @router.delete("/{task_group_id}", status_code=204)
 def delete_task_group(
-    task_group_id: int, service: TaskGroupService = Depends(get_task_group_service)
+    task_group_id: int,
+    service: TaskGroupService = Depends(get_task_group_service),
+    attachment_service: AttachmentService = Depends(get_attachment_service),
+    task_service: TaskService = Depends(get_task_service),
+    meeting_service: MeetingService = Depends(get_meeting_service),
 ):
+    """API 설계 5.2절 순서: 하위 Task마다(각자 캐스케이드 포함) →
+    참고자료 → 하위 미팅마다(각자 캐스케이드 포함) → TaskGroup 행."""
     try:
+        for task in task_service.list(task_group_id, view="all"):
+            task_service.delete(task.id)
+        for attachment in attachment_service.list(task_group_id):
+            attachment_service.delete(attachment.id)
+        for meeting in meeting_service.list(task_group_id):
+            meeting_service.delete(meeting.id)
         service.delete(task_group_id)
     except TaskGroupNotFoundError:
         raise HTTPException(status_code=404, detail="작업 그룹을 찾을 수 없습니다.")

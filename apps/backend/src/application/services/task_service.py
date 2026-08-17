@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Literal
 
+from application.ports.outbound.meeting_task_repository import MeetingTaskRepository
 from application.ports.outbound.task_activity_log_repository import (
     TaskActivityLogRepository,
 )
@@ -37,6 +38,7 @@ class TaskService:
         comment_repository: TaskCommentRepository,
         assignee_repository: TaskAssigneeRepository,
         dependency_repository: TaskDependencyRepository,
+        meeting_task_repository: MeetingTaskRepository,
         task_group_repository: TaskGroupRepository,
     ) -> None:
         self.task_repository = task_repository
@@ -44,6 +46,7 @@ class TaskService:
         self.comment_repository = comment_repository
         self.assignee_repository = assignee_repository
         self.dependency_repository = dependency_repository
+        self.meeting_task_repository = meeting_task_repository
         self.task_group_repository = task_group_repository
 
     def create(
@@ -166,12 +169,13 @@ class TaskService:
 
     def delete(self, task_id: int) -> None:
         """Task를 삭제한다. API 설계 5.2절 순서: 댓글 → 활동이력 →
-        담당자 → 선행 관계(양방향) → (미팅 연결, 아직 없음) → Task 행."""
+        담당자 → 선행 관계(양방향) → 미팅 연결 → Task 행."""
         self.get(task_id)
         self.comment_repository.delete_by_task(task_id)
         self.activity_log_repository.delete_by_task(task_id)
         self.assignee_repository.delete_by_task(task_id)
         self.dependency_repository.delete_by_task(task_id)
+        self.meeting_task_repository.delete_by_task(task_id)
         self.task_repository.delete(task_id)
 
     def _ensure_task_group_exists(self, task_group_id: int) -> None:

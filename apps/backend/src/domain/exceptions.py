@@ -53,3 +53,9 @@ class DependencyTaskGroupMismatchError(Exception):
         )
         self.task_id = task_id
         self.depends_on_task_id = depends_on_task_id
+
+
+class MeetingNotFoundError(Exception):
+    def __init__(self, meeting_id: int):
+        super().__init__(f"meeting {meeting_id} not found")
+        self.meeting_id = meeting_id
