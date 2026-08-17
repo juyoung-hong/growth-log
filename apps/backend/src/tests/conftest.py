@@ -61,6 +61,7 @@ class FakePersonRepository(PersonRepository):
     def __init__(self) -> None:
         self._store: dict[int, Person] = {}
         self._next_id = 1
+        self.referenced_ids: set[int] = set()
 
     def add(self, person: Person) -> Person:
         person.id = self._next_id
@@ -88,7 +89,7 @@ class FakePersonRepository(PersonRepository):
         return next((p for p in self._store.values() if p.email == email), None)
 
     def is_referenced(self, person_id: int) -> bool:
-        return False
+        return person_id in self.referenced_ids
 
 
 @pytest.fixture

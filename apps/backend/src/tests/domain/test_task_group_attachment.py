@@ -43,3 +43,27 @@ def test_파일_타입이_external_url도_가지면_예외() -> None:
             object_storage_path="task-group/1/abc",
             external_url="https://example.com",
         )
+
+
+def test_URL_타입이_object_storage_path도_가지면_예외() -> None:
+    with pytest.raises(InvalidFieldError):
+        TaskGroupAttachment(
+            id=None,
+            task_group_id=1,
+            type=AttachmentType.URL,
+            title="링크",
+            external_url="https://example.com",
+            object_storage_path="task-group/1/abc",
+        )
+
+
+def test_파일_크기가_음수면_예외() -> None:
+    with pytest.raises(InvalidFieldError):
+        TaskGroupAttachment(
+            id=None,
+            task_group_id=1,
+            type=AttachmentType.FILE,
+            title="자료",
+            object_storage_path="task-group/1/abc",
+            file_size_bytes=-1,
+        )

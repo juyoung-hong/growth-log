@@ -30,7 +30,7 @@ class MeetingTaskService:
     def list_meetings_by_task(self, task_id: int) -> list[int]:
         """Task 쪽 역조회용 — meeting_id 목록만 돌려준다. 실제 Meeting
         객체 조립(참석자·연결 태스크까지 채운 응답)은 라우터가 한다."""
-        self._ensure_task_exists(task_id)
+        self._get_task(task_id)
         return self.task_link_repository.list_meeting_ids_by_task(task_id)
 
     def add(self, meeting_id: int, task_id: int) -> Task:
@@ -50,10 +50,6 @@ class MeetingTaskService:
     def _ensure_meeting_exists(self, meeting_id: int) -> None:
         if not self.meeting_repository.get(meeting_id):
             raise MeetingNotFoundError(meeting_id)
-
-    def _ensure_task_exists(self, task_id: int) -> None:
-        if not self.task_repository.get(task_id):
-            raise TaskNotFoundError(task_id)
 
     def _get_task(self, task_id: int) -> Task:
         task = self.task_repository.get(task_id)

@@ -1,4 +1,3 @@
-from ast import Index
 from datetime import date, datetime, timezone
 
 from sqlalchemy import (
