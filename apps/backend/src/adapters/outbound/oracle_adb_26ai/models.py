@@ -327,3 +327,63 @@ class MeetingTaskTable(SQLModel, table=True):
             primary_key=True,
         )
     )
+
+
+class ExportJobTable(SQLModel, table=True):
+    __tablename__ = "export_job"
+
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, Identity(always=True), primary_key=True),
+    )
+    requested_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
+        ),
+    )
+    completed_at: datetime | None = Field(default=None, sa_column=Column(TIMESTAMP))
+
+
+class ExportJobTaskGroupTable(SQLModel, table=True):
+    __tablename__ = "export_job_task_group"
+    __table_args__ = (Index("ix_export_job_task_group_task_group", "task_group_id"),)
+
+    export_job_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("export_job.id", name="fk_export_job_task_group_export_job"),
+            primary_key=True,
+        )
+    )
+    task_group_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("task_group.id", name="fk_export_job_task_group_task_group"),
+            primary_key=True,
+        )
+    )
+    db_bytes_freed: int | None = Field(default=None)
+    object_storage_bytes_freed: int | None = Field(default=None)
+    is_source_deleted: str = Field(
+        default="N",
+        sa_column=Column(String(1), nullable=False, server_default=text("'N'")),
+    )
+    deleted_at: datetime | None = Field(default=None, sa_column=Column(TIMESTAMP))
+
+
+class StorageUsageSnapshotTable(SQLModel, table=True):
+    __tablename__ = "storage_usage_snapshot"
+
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, Identity(always=True), primary_key=True),
+    )
+    checked_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            TIMESTAMP, nullable=False, server_default=text("SYSTIMESTAMP")
+        ),
+    )
+    db_used_bytes: int = Field(sa_column=Column(Integer, nullable=False))
+    object_storage_used_bytes: int = Field(sa_column=Column(Integer, nullable=False))

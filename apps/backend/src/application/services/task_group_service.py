@@ -1,5 +1,7 @@
 """TaskGroup 유스케이스."""
 
+from datetime import date
+
 from application.ports.outbound.task_group_repository import TaskGroupRepository
 from domain.common.enums import Scope, TaskStatus
 from domain.exceptions import TaskGroupNotFoundError
@@ -44,9 +46,14 @@ class TaskGroupService:
         category: Scope | None = None,
         status: TaskStatus | None = None,
         include_archived: bool = False,
+        created_after: date | None = None,
+        created_before: date | None = None,
     ) -> list[TaskGroup]:
-        """TaskGroup 목록을 조회한다. 기본은 보관되지 않은 것만."""
-        return self.repository.list(category, status, include_archived)
+        """TaskGroup 목록을 조회한다. 기본은 보관되지 않은 것만.
+        created_after/created_before는 export 후보를 기간으로 좁힐 때 쓴다."""
+        return self.repository.list(
+            category, status, include_archived, created_after, created_before
+        )
 
     def update(self, task_group_id: int, **fields: object) -> TaskGroup:
         """TaskGroup 정보를 부분 수정한다."""

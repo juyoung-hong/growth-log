@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
+from application.ports.outbound.database_usage_port import DatabaseUsagePort
+from application.ports.outbound.export_job_repository import ExportJobRepository
 from application.ports.outbound.meeting_attendee_repository import (
     MeetingAttendeeRepository,
 )
@@ -13,6 +15,9 @@ from application.ports.outbound.meeting_repository import MeetingRepository
 from application.ports.outbound.meeting_task_repository import MeetingTaskRepository
 from application.ports.outbound.object_storage_port import ObjectStoragePort
 from application.ports.outbound.person_repository import PersonRepository
+from application.ports.outbound.storage_usage_snapshot_repository import (
+    StorageUsageSnapshotRepository,
+)
 from application.ports.outbound.task_activity_log_repository import (
     TaskActivityLogRepository,
 )
@@ -25,18 +30,22 @@ from application.ports.outbound.task_group_attachment_repository import (
     TaskGroupAttachmentRepository,
 )
 from application.ports.outbound.task_group_repository import TaskGroupRepository
+from application.ports.outbound.task_group_size_estimator import TaskGroupSizeEstimator
 from application.ports.outbound.task_repository import TaskRepository
 from application.services.attachment_service import AttachmentService
+from application.services.export_service import ExportService
 from application.services.meeting_attendee_service import MeetingAttendeeService
 from application.services.meeting_service import MeetingService
 from application.services.meeting_task_service import MeetingTaskService
 from application.services.person_service import PersonService
+from application.services.storage_service import StorageService
 from application.services.task_assignee_service import TaskAssigneeService
 from application.services.task_comment_service import TaskCommentService
 from application.services.task_dependency_service import TaskDependencyService
 from application.services.task_group_service import TaskGroupService
 from application.services.task_service import TaskService
 from domain.common.enums import Scope, TaskStatus
+from domain.export_job import ExportJob, ExportJobTaskGroup
 from domain.meeting import Meeting
 from domain.person import Person
 from domain.task import Task
@@ -114,6 +123,8 @@ class FakeTaskGroupRepository(TaskGroupRepository):
         category: Scope | None = None,
         status: TaskStatus | None = None,
         include_archived: bool = False,
+        created_after: date | None = None,
+        created_before: date | None = None,
     ) -> list[TaskGroup]:
         values = list(self._store.values())
         if not include_archived:
@@ -179,6 +190,12 @@ class FakeObjectStoragePort(ObjectStoragePort):
 
     def delete(self, path: str) -> None:
         self.uploaded.pop(path, None)
+
+    def download(self, path: str) -> bytes:
+        return self.uploaded[path]
+
+    def get_used_bytes(self) -> int:
+        return sum(len(content) for content in self.uploaded.values())
 
 
 @pytest.fixture
@@ -532,4 +549,127 @@ def meeting_task_service(
         task_link_repository=meeting_task_repository,
         meeting_repository=meeting_repository,
         task_repository=task_repository,
+    )
+
+
+class FakeDatabaseUsagePort(DatabaseUsagePort):
+    def __init__(self, used_bytes: int = 0) -> None:
+        self.used_bytes = used_bytes
+
+    def get_used_bytes(self) -> int:
+        return self.used_bytes
+
+
+class FakeStorageUsageSnapshotRepository(StorageUsageSnapshotRepository):
+    def __init__(self) -> None:
+        self._snapshot_dates: set[date] = set()
+        self.add_call_count = 0
+
+    def has_snapshot_for_today(self) -> bool:
+        return date.today() in self._snapshot_dates
+
+    def add(self, db_used_bytes: int, object_storage_used_bytes: int) -> None:
+        self._snapshot_dates.add(date.today())
+        self.add_call_count += 1
+
+
+class FakeTaskGroupSizeEstimator(TaskGroupSizeEstimator):
+    def __init__(self, fixed_bytes: int = 0) -> None:
+        self.fixed_bytes = fixed_bytes
+
+    def estimate_content_bytes(self, task_group_id: int) -> int:
+        return self.fixed_bytes
+
+
+class FakeExportJobRepository(ExportJobRepository):
+    def __init__(self) -> None:
+        self._jobs: dict[int, ExportJob] = {}
+        self._links: dict[tuple[int, int], ExportJobTaskGroup] = {}
+        self._next_id = 1
+
+    def add(self, task_group_ids: list[int]) -> ExportJob:
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        job = ExportJob(id=self._next_id, requested_at=now, completed_at=now)
+        self._jobs[job.id] = job
+        for task_group_id in task_group_ids:
+            self._links[(job.id, task_group_id)] = ExportJobTaskGroup(
+                export_job_id=job.id, task_group_id=task_group_id
+            )
+        self._next_id += 1
+        return job
+
+    def get(self, export_job_id: int) -> ExportJob | None:
+        return self._jobs.get(export_job_id)
+
+    def list(self) -> list[ExportJob]:
+        return list(self._jobs.values())
+
+    def get_link(
+        self, export_job_id: int, task_group_id: int
+    ) -> ExportJobTaskGroup | None:
+        return self._links.get((export_job_id, task_group_id))
+
+    def list_links(self, export_job_id: int) -> list[ExportJobTaskGroup]:
+        return [link for (jid, _), link in self._links.items() if jid == export_job_id]
+
+    def update_link(self, link: ExportJobTaskGroup) -> ExportJobTaskGroup:
+        self._links[(link.export_job_id, link.task_group_id)] = link
+        return link
+
+
+@pytest.fixture
+def database_usage_port() -> FakeDatabaseUsagePort:
+    return FakeDatabaseUsagePort(used_bytes=1_000_000)
+
+
+@pytest.fixture
+def storage_usage_snapshot_repository() -> FakeStorageUsageSnapshotRepository:
+    return FakeStorageUsageSnapshotRepository()
+
+
+@pytest.fixture
+def storage_service(
+    database_usage_port: FakeDatabaseUsagePort,
+    fake_object_storage: FakeObjectStoragePort,
+    storage_usage_snapshot_repository: FakeStorageUsageSnapshotRepository,
+) -> StorageService:
+    return StorageService(
+        database_usage=database_usage_port,
+        object_storage=fake_object_storage,
+        snapshot_repository=storage_usage_snapshot_repository,
+    )
+
+
+@pytest.fixture
+def export_job_repository() -> FakeExportJobRepository:
+    return FakeExportJobRepository()
+
+
+@pytest.fixture
+def task_group_size_estimator() -> FakeTaskGroupSizeEstimator:
+    return FakeTaskGroupSizeEstimator(fixed_bytes=500)
+
+
+@pytest.fixture
+def export_service(
+    export_job_repository: FakeExportJobRepository,
+    task_group_repository: FakeTaskGroupRepository,
+    task_group_service: TaskGroupService,
+    task_service: TaskService,
+    task_comment_service: TaskCommentService,
+    meeting_service: MeetingService,
+    attachment_service: AttachmentService,
+    fake_object_storage: FakeObjectStoragePort,
+) -> ExportService:
+    return ExportService(
+        export_job_repository=export_job_repository,
+        task_group_repository=task_group_repository,
+        task_group_service=task_group_service,
+        task_service=task_service,
+        task_comment_service=task_comment_service,
+        meeting_service=meeting_service,
+        attachment_service=attachment_service,
+        object_storage=fake_object_storage,
     )

@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from adapters.outbound.oracle_adb_26ai.models import TaskGroupTable
 from application.ports.outbound.task_group_repository import TaskGroupRepository
@@ -36,6 +36,8 @@ class SqlTaskGroupRepository(TaskGroupRepository):
         category: Scope | None = None,
         status: TaskStatus | None = None,
         include_archived: bool = False,
+        created_after: date | None = None,
+        created_before: date | None = None,
     ) -> list[TaskGroup]:
         stmt = select(TaskGroupTable)
         if not include_archived:
@@ -44,6 +46,10 @@ class SqlTaskGroupRepository(TaskGroupRepository):
             stmt = stmt.where(TaskGroupTable.category == category.value)
         if status:
             stmt = stmt.where(TaskGroupTable.status == status.value)
+        if created_after:
+            stmt = stmt.where(func.trunc(TaskGroupTable.created_at) >= created_after)
+        if created_before:
+            stmt = stmt.where(func.trunc(TaskGroupTable.created_at) <= created_before)
         rows = self.session.exec(stmt).all()
         return [self._to_domain(r) for r in rows]
 

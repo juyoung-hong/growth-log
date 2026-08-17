@@ -59,3 +59,18 @@ class MeetingNotFoundError(Exception):
     def __init__(self, meeting_id: int):
         super().__init__(f"meeting {meeting_id} not found")
         self.meeting_id = meeting_id
+
+
+class ExportJobNotFoundError(Exception):
+    def __init__(self, export_job_id: int):
+        super().__init__(f"export_job {export_job_id} not found")
+        self.export_job_id = export_job_id
+
+
+class ExportLinkNotFoundError(Exception):
+    def __init__(self, export_job_id: int, task_group_id: int):
+        super().__init__(
+            f"export_job {export_job_id} has no link to task_group {task_group_id}"
+        )
+        self.export_job_id = export_job_id
+        self.task_group_id = task_group_id

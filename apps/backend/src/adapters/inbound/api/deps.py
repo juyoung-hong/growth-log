@@ -3,8 +3,14 @@ from typing import Iterator
 from fastapi import Depends
 from sqlmodel import Session
 
+from adapters.outbound.oci_database.oci_database_usage_adapter import (
+    database_usage_adapter,
+)
 from adapters.outbound.oci_object_storage.oci_object_storage_adapter import (
     object_storage_adapter,
+)
+from adapters.outbound.oracle_adb_26ai.export_job_repository import (
+    SqlExportJobRepository,
 )
 from adapters.outbound.oracle_adb_26ai.meeting_attendee_repository import (
     SqlMeetingAttendeeRepository,
@@ -15,6 +21,9 @@ from adapters.outbound.oracle_adb_26ai.meeting_task_repository import (
 )
 from adapters.outbound.oracle_adb_26ai.person_repository import SqlPersonRepository
 from adapters.outbound.oracle_adb_26ai.session import engine
+from adapters.outbound.oracle_adb_26ai.storage_usage_snapshot_repository import (
+    SqlStorageUsageSnapshotRepository,
+)
 from adapters.outbound.oracle_adb_26ai.task_activity_log_repository import (
     SqlTaskActivityLogRepository,
 )
@@ -33,12 +42,18 @@ from adapters.outbound.oracle_adb_26ai.task_group_attachment_repository import (
 from adapters.outbound.oracle_adb_26ai.task_group_repository import (
     SqlTaskGroupRepository,
 )
+from adapters.outbound.oracle_adb_26ai.task_group_size_estimator import (
+    SqlTaskGroupSizeEstimator,
+)
 from adapters.outbound.oracle_adb_26ai.task_repository import SqlTaskRepository
+from application.ports.outbound.task_group_size_estimator import TaskGroupSizeEstimator
 from application.services.attachment_service import AttachmentService
+from application.services.export_service import ExportService
 from application.services.meeting_attendee_service import MeetingAttendeeService
 from application.services.meeting_service import MeetingService
 from application.services.meeting_task_service import MeetingTaskService
 from application.services.person_service import PersonService
+from application.services.storage_service import StorageService
 from application.services.task_assignee_service import TaskAssigneeService
 from application.services.task_comment_service import TaskCommentService
 from application.services.task_dependency_service import TaskDependencyService
@@ -68,17 +83,6 @@ def get_attachment_service(
         attachment_repository=SqlTaskGroupAttachmentRepository(session),
         task_group_repository=SqlTaskGroupRepository(session),
         object_storage=object_storage_adapter,
-    )
-
-
-def get_task_service(session: Session = Depends(get_db_session)) -> TaskService:
-    return TaskService(
-        task_repository=SqlTaskRepository(session),
-        activity_log_repository=SqlTaskActivityLogRepository(session),
-        comment_repository=SqlTaskCommentRepository(session),
-        assignee_repository=SqlTaskAssigneeRepository(session),
-        dependency_repository=SqlTaskDependencyRepository(session),
-        task_group_repository=SqlTaskGroupRepository(session),
     )
 
 
@@ -150,3 +154,50 @@ def get_meeting_task_service(
         meeting_repository=SqlMeetingRepository(session),
         task_repository=SqlTaskRepository(session),
     )
+
+
+def get_storage_service(session: Session = Depends(get_db_session)) -> StorageService:
+    return StorageService(
+        database_usage=database_usage_adapter,
+        object_storage=object_storage_adapter,
+        snapshot_repository=SqlStorageUsageSnapshotRepository(session),
+    )
+
+
+def get_export_service(session: Session = Depends(get_db_session)) -> ExportService:
+    return ExportService(
+        export_job_repository=SqlExportJobRepository(session),
+        task_group_repository=SqlTaskGroupRepository(session),
+        task_group_service=TaskGroupService(SqlTaskGroupRepository(session)),
+        task_service=TaskService(
+            task_repository=SqlTaskRepository(session),
+            activity_log_repository=SqlTaskActivityLogRepository(session),
+            comment_repository=SqlTaskCommentRepository(session),
+            assignee_repository=SqlTaskAssigneeRepository(session),
+            dependency_repository=SqlTaskDependencyRepository(session),
+            meeting_task_repository=SqlMeetingTaskRepository(session),
+            task_group_repository=SqlTaskGroupRepository(session),
+        ),
+        task_comment_service=TaskCommentService(
+            comment_repository=SqlTaskCommentRepository(session),
+            task_repository=SqlTaskRepository(session),
+        ),
+        meeting_service=MeetingService(
+            meeting_repository=SqlMeetingRepository(session),
+            attendee_repository=SqlMeetingAttendeeRepository(session),
+            task_link_repository=SqlMeetingTaskRepository(session),
+            task_group_repository=SqlTaskGroupRepository(session),
+        ),
+        attachment_service=AttachmentService(
+            attachment_repository=SqlTaskGroupAttachmentRepository(session),
+            task_group_repository=SqlTaskGroupRepository(session),
+            object_storage=object_storage_adapter,
+        ),
+        object_storage=object_storage_adapter,
+    )
+
+
+def get_task_group_size_estimator(
+    session: Session = Depends(get_db_session),
+) -> TaskGroupSizeEstimator:
+    return SqlTaskGroupSizeEstimator(session)

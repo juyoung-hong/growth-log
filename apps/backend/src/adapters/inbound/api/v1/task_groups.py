@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from adapters.inbound.api.deps import (
@@ -28,9 +30,13 @@ def list_task_groups(
     category: Scope | None = None,
     status: TaskStatus | None = None,
     include_archived: bool = False,
+    created_after: date | None = None,
+    created_before: date | None = None,
     service: TaskGroupService = Depends(get_task_group_service),
 ):
-    return service.list(category, status, include_archived)
+    return service.list(
+        category, status, include_archived, created_after, created_before
+    )
 
 
 @router.post("", response_model=TaskGroupRead, status_code=201)

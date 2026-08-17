@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import date
 
 from domain.common.enums import Scope, TaskStatus
 from domain.task_group import TaskGroup
@@ -27,12 +28,9 @@ class TaskGroupRepository(ABC):
         category: Scope | None = None,
         status: TaskStatus | None = None,
         include_archived: bool = False,
+        created_after: date | None = None,
+        created_before: date | None = None,
     ) -> list[TaskGroup]:
-        """조건에 맞는 TaskGroup 목록을 반환한다.
-
-        include_archived가 False(기본값)면 is_archived=True인 TaskGroup은
-        제외한다 — API 설계상 목록 조회의 기본 동작이다.
-        """
         raise NotImplementedError
 
     @abstractmethod
