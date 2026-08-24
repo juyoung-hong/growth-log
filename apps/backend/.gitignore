@@ -4,3 +4,4 @@ __pycache__/
 .env
 *.egg-info/
 .coverage
+k8s/01-configmap.yaml
