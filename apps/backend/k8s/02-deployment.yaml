@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: growth-log
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: growth-log-backend   
+          imagePullPolicy: Never            
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-db-credentials
+          volumeMounts:
+            - name: wallet
+              mountPath: /app/wallet
+              readOnly: true
+            - name: oci-config
+              mountPath: /app/.oci
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: wallet
+          secret:
+            secretName: backend-wallet
+        - name: oci-config
+          secret:
+            secretName: backend-oci-config

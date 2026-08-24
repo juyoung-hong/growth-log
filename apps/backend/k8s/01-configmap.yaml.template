@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: growth-log
+data:
+  DB_DSN: "db_medium"       # low/medium/high, .env에 쓰던 값과 동일하게
+  TNS_ADMIN: "/app/wallet"          # STEP 5에서 지갑 Secret을 마운트할 경로
+  OCI_BUCKET_NAME: "objectstorage" # OCI Object Storage 버킷 이름
+  OCI_AUTONOMOUS_DATABASE_ID: "ocid1.autonomousdatabase.oc1.ap-chuncheon-1.afs" # OCI Autonomous Database OCID
