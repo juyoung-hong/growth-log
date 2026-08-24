@@ -14,7 +14,6 @@ dependencies = [
     "oracledb>=4.0.2",
     "pillow>=12.3.0",
     "pydantic-settings>=2.15.0",
-    "pytest-cov>=7.1.0",
     "python-multipart>=0.0.32",
     "sqlmodel>=0.0.39",
     "uvicorn[standard]>=0.52.3",
@@ -34,6 +33,7 @@ module-name = ["adapters", "application", "config", "domain"]
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.pytest.ini_options]
