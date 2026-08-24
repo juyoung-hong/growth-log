@@ -57,7 +57,6 @@ dependencies = [
     { name = "oracledb" },
     { name = "pillow" },
     { name = "pydantic-settings" },
-    { name = "pytest-cov" },
     { name = "python-multipart" },
     { name = "sqlmodel" },
     { name = "uvicorn", extra = ["standard"] },
@@ -66,6 +65,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+    { name = "pytest-cov" },
 ]
 
 [package.metadata]
@@ -76,14 +76,16 @@ requires-dist = [
     { name = "oracledb", specifier = ">=4.0.2" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
-    { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "sqlmodel", specifier = ">=0.0.39" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.3" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=9.1.1" }]
+dev = [
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+]
 
 [[package]]
 name = "certifi"
