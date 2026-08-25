@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from domain.common.enums import Scope, TaskStatus
@@ -30,4 +32,5 @@ class TaskGroupRead(BaseModel):
     description: str | None
     status: TaskStatus
     is_archived: bool
+    created_at: datetime | None
     progress: TaskGroupProgress | None = None

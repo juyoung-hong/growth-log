@@ -36,6 +36,7 @@ class TaskRead(BaseModel):
     start_date: date | None
     due_date: date | None
     completed_at: datetime | None
+    created_at: datetime | None
 
 
 class TaskActivityLogRead(BaseModel):

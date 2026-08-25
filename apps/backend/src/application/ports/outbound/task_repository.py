@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Literal
 
+from domain.common.enums import TaskStatus
 from domain.task import Task
 
 
@@ -32,4 +33,12 @@ class TaskRepository(ABC):
 
     @abstractmethod
     def delete(self, task_id: int) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def count_by_status_bulk(
+        self, task_group_ids: list[int]
+    ) -> dict[int, dict[TaskStatus, int]]:
+        """여러 TaskGroup의 상태별 Task 개수를 한 번에 집계한다.
+        목록 화면 진행률용 — TaskGroup마다 따로 조회하면 N+1이 된다."""
         raise NotImplementedError

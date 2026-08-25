@@ -8,6 +8,7 @@ import pytest
 
 from application.ports.outbound.database_usage_port import DatabaseUsagePort
 from application.ports.outbound.export_job_repository import ExportJobRepository
+from application.ports.outbound.holiday_calendar_port import HolidayCalendarPort
 from application.ports.outbound.meeting_attendee_repository import (
     MeetingAttendeeRepository,
 )
@@ -219,11 +220,10 @@ def attachment_service(
 class FakeTaskRepository(TaskRepository):
     """테스트용 인메모리 TaskRepository.
 
-    view='default' 필터는 상태만 흉내 낸다(진행중 + 보류를 포함) — 실제
-    SQL 리포지토리처럼 '최근 30일 이내 등록된 보류'까지 정확히 재현하려면
-    도메인 Task에 created_at을 노출해야 하는데, Person/TaskGroup도 도메인에
-    created_at을 안 두는 원칙이라 여기서도 안 둔다. 그 시간 기준 세부
-    동작은 Swagger로 직접 확인한다(17절).
+    도메인 Task가 created_at을 갖게 되면서(화면에서 '등록 08-05'를 보여줘야
+    해서 추가했다), view='default'의 '최근 30일 이내 등록된 보류' 규칙을
+    실제 SQL 리포지토리와 동일하게 재현한다. 예전에는 이 값이 없어서
+    상태만 흉내 냈고 시간 기준은 Swagger로 확인할 수밖에 없었다.
     """
 
     def __init__(self) -> None:
@@ -232,6 +232,8 @@ class FakeTaskRepository(TaskRepository):
 
     def add(self, task: Task) -> Task:
         task.id = self._next_id
+        if task.created_at is None:
+            task.created_at = datetime.now(timezone.utc)
         self._store[task.id] = task
         self._next_id += 1
         return task
@@ -242,7 +244,13 @@ class FakeTaskRepository(TaskRepository):
     def list(self, task_group_id: int, view: str = "default") -> list[Task]:
         values = [t for t in self._store.values() if t.task_group_id == task_group_id]
         if view == "default":
-            values = [t for t in values if t.status != TaskStatus.DONE]
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+            values = [
+                t
+                for t in values
+                if t.status == TaskStatus.IN_PROGRESS
+                or (t.status == TaskStatus.PENDING and t.created_at >= cutoff)
+            ]
         return values
 
     def update(self, task: Task) -> Task:
@@ -251,6 +259,16 @@ class FakeTaskRepository(TaskRepository):
 
     def delete(self, task_id: int) -> None:
         self._store.pop(task_id, None)
+
+    def count_by_status_bulk(
+        self, task_group_ids: list[int]
+    ) -> dict[int, dict[TaskStatus, int]]:
+        result: dict[int, dict[TaskStatus, int]] = {}
+        for task in self._store.values():
+            if task.task_group_id in task_group_ids:
+                counts = result.setdefault(task.task_group_id, {})
+                counts[task.status] = counts.get(task.status, 0) + 1
+        return result
 
 
 class FakeTaskActivityLogRepository(TaskActivityLogRepository):
@@ -315,6 +333,11 @@ def task_comment_repository() -> FakeTaskCommentRepository:
 
 
 @pytest.fixture
+def holiday_calendar_port() -> FakeHolidayCalendarPort:
+    return FakeHolidayCalendarPort()
+
+
+@pytest.fixture
 def task_service(
     task_repository: FakeTaskRepository,
     activity_log_repository: FakeTaskActivityLogRepository,
@@ -323,6 +346,7 @@ def task_service(
     dependency_repository: FakeTaskDependencyRepository,
     meeting_task_repository: FakeMeetingTaskRepository,
     task_group_repository: FakeTaskGroupRepository,
+    holiday_calendar_port: FakeHolidayCalendarPort,
 ) -> TaskService:
     return TaskService(
         task_repository=task_repository,
@@ -332,6 +356,7 @@ def task_service(
         dependency_repository=dependency_repository,
         meeting_task_repository=meeting_task_repository,
         task_group_repository=task_group_repository,
+        holiday_calendar=holiday_calendar_port,
     )
 
 
@@ -553,6 +578,17 @@ def meeting_task_service(
     )
 
 
+class FakeHolidayCalendarPort(HolidayCalendarPort):
+    """테스트용 공휴일 제공자. 실제 달력과 무관하게 원하는 날만 공휴일로
+    지정해서 마감일 계산 로직만 격리해 검증한다."""
+
+    def __init__(self, holidays: set[date] | None = None) -> None:
+        self.holidays: set[date] = holidays or set()
+
+    def is_holiday(self, day: date) -> bool:
+        return day in self.holidays
+
+
 class FakeDatabaseUsagePort(DatabaseUsagePort):
     def __init__(self, used_bytes: int = 0) -> None:
         self.used_bytes = used_bytes
@@ -674,3 +710,19 @@ def export_service(
         attachment_service=attachment_service,
         object_storage=fake_object_storage,
     )
+
+
+class FakeHolidayCalendarPort(HolidayCalendarPort):
+    """테스트용 공휴일 제공자. 실제 달력과 무관하게 원하는 날만 공휴일로
+    지정해서 마감일 계산 로직만 격리해 검증한다."""
+
+    def __init__(self, holidays: set[date] | None = None) -> None:
+        self.holidays: set[date] = holidays or set()
+
+    def is_holiday(self, day: date) -> bool:
+        return day in self.holidays
+
+
+@pytest.fixture
+def holiday_calendar_port() -> FakeHolidayCalendarPort:
+    return FakeHolidayCalendarPort()

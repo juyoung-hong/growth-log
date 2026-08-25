@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from domain.common.enums import Scope, TaskStatus
 from domain.common.validators import validate_not_empty
@@ -22,6 +23,7 @@ class TaskGroup:
     description: str | None = None
     status: TaskStatus = TaskStatus.IN_PROGRESS
     is_archived: bool = False
+    created_at: datetime | None = None
 
     def __post_init__(self) -> None:
         validate_not_empty(self.name, field="name")

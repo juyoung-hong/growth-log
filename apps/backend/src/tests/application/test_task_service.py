@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -215,3 +215,143 @@ def test_같은_상태로_바꾸면_아무일도_안_일어난다(
 
     logs = task_service.list_activity_log(task.id)
     assert len(logs) == 1  # 등록 이벤트만 있고, 상태 변경 이벤트는 추가로 안 남음
+
+
+def test_시작일과_예상소요일만_주면_마감일이_자동으로_채워진다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    """스토리보드 SCENE 02: 08-18(화) + 2일 -> 08-19(수)."""
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+
+    task = task_service.create(
+        task_group_id=task_group.id,
+        name="작업",
+        estimated_days=2,
+        start_date=date(2026, 8, 18),
+    )
+
+    assert task.due_date == date(2026, 8, 19)
+
+
+def test_공휴일은_영업일에서_빼고_마감일을_계산한다(
+    task_service: TaskService, task_group_repository, holiday_calendar_port
+) -> None:
+    """08-14(금)이 1일째, 주말과 광복절 대체휴일(08-17 월)을 건너뛰어
+    08-18(화)이 2일째가 된다."""
+    holiday_calendar_port.holidays.add(date(2026, 8, 17))
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+
+    task = task_service.create(
+        task_group_id=task_group.id,
+        name="작업",
+        estimated_days=2,
+        start_date=date(2026, 8, 14),
+    )
+
+    assert task.due_date == date(2026, 8, 18)
+
+
+def test_마감일을_직접_주면_자동_계산하지_않는다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+
+    task = task_service.create(
+        task_group_id=task_group.id,
+        name="작업",
+        estimated_days=2,
+        start_date=date(2026, 8, 18),
+        due_date=date(2026, 12, 31),
+    )
+
+    assert task.due_date == date(2026, 12, 31)
+
+
+def test_시작일이_없으면_마감일도_비워둔다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+
+    task = task_service.create(
+        task_group_id=task_group.id, name="작업", estimated_days=5
+    )
+
+    assert task.due_date is None
+
+
+def test_일정_변경시_마감일을_비우면_기존_예상소요일로_계산해_이력에_남긴다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    """초판 구현에서 계산 결과가 버려지던 자리라 이력까지 함께 확인한다."""
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(
+        task_group_id=task_group.id, name="작업", estimated_days=2
+    )
+
+    updated = task_service.change_schedule(
+        task.id, start_date=date(2026, 8, 18), due_date=None
+    )
+
+    assert updated.due_date == date(2026, 8, 19)
+    logs = task_service.list_activity_log(task.id)
+    assert logs[-1].new_value == "2026-08-18 ~ 2026-08-19"
+
+
+def test_여러_TaskGroup의_상태별_개수를_한번에_센다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    group_a = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="A")
+    )
+    group_b = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="B")
+    )
+    empty = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="비어있음")
+    )
+    task_a = task_service.create(task_group_id=group_a.id, name="a1")
+    task_service.change_status(task_a.id, TaskStatus.DONE)
+    task_service.create(task_group_id=group_a.id, name="a2")
+    task_service.create(task_group_id=group_b.id, name="b1")
+
+    counts = task_service.count_by_status_bulk([group_a.id, group_b.id, empty.id])
+
+    assert counts[group_a.id] == {TaskStatus.DONE: 1, TaskStatus.PENDING: 1}
+    assert counts[group_b.id] == {TaskStatus.PENDING: 1}
+    # Task가 하나도 없는 TaskGroup은 키 자체가 없다 — 라우터가 .get(id, {})로 받는다
+    assert empty.id not in counts
+
+
+def test_빈_목록으로_묶음_집계하면_빈_결과(task_service: TaskService) -> None:
+    assert task_service.count_by_status_bulk([]) == {}
+
+
+def test_한달_지나_등록된_보류는_기본_목록에서_빠진다(
+    task_service: TaskService, task_group_repository, task_repository
+) -> None:
+    """도메인에 created_at이 생기기 전에는 Fake가 이 규칙을 흉내 내지
+    못해 쓸 수 없던 테스트다."""
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    recent = task_service.create(task_group_id=task_group.id, name="최근 보류")
+    old = task_service.create(task_group_id=task_group.id, name="오래된 보류")
+    task_repository.get(old.id).created_at = datetime.now(timezone.utc) - timedelta(
+        days=31
+    )
+
+    default_names = {t.name for t in task_service.list(task_group.id)}
+    all_names = {t.name for t in task_service.list(task_group.id, view="all")}
+
+    assert default_names == {recent.name}
+    assert all_names == {recent.name, old.name}

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from sqlmodel import Session, and_, or_, select
+from sqlmodel import Session, and_, func, or_, select
 
 from adapters.outbound.oracle_adb_26ai.models import TaskTable
 from application.ports.outbound.task_repository import TaskRepository
@@ -74,6 +74,28 @@ class SqlTaskRepository(TaskRepository):
             self.session.delete(row)
             self.session.commit()
 
+    def count_by_status_bulk(
+        self, task_group_ids: list[int]
+    ) -> dict[int, dict[TaskStatus, int]]:
+        # 빈 리스트로 IN ()을 만들면 Oracle에서 문법 오류가 난다.
+        if not task_group_ids:
+            return {}
+
+        stmt = (
+            select(
+                TaskTable.task_group_id,
+                TaskTable.status,
+                func.count().label("cnt"),
+            )
+            .where(TaskTable.task_group_id.in_(task_group_ids))
+            .group_by(TaskTable.task_group_id, TaskTable.status)
+        )
+
+        result: dict[int, dict[TaskStatus, int]] = {}
+        for task_group_id, status, count in self.session.exec(stmt):
+            result.setdefault(task_group_id, {})[TaskStatus(status)] = count
+        return result
+
     @staticmethod
     def _to_domain(row: TaskTable) -> Task:
         return Task(
@@ -85,4 +107,5 @@ class SqlTaskRepository(TaskRepository):
             start_date=row.start_date,
             due_date=row.due_date,
             completed_at=row.completed_at,
+            created_at=row.created_at,
         )

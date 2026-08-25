@@ -21,6 +21,7 @@ from application.services.task_service import TaskService
 from domain.common.enums import Scope, TaskStatus
 from domain.common.exceptions import InvalidFieldError
 from domain.exceptions import TaskGroupNotFoundError
+from domain.task_group import TaskGroup
 
 router = APIRouter(prefix="/task-groups", tags=["task-groups"])
 
@@ -33,10 +34,13 @@ def list_task_groups(
     created_after: date | None = None,
     created_before: date | None = None,
     service: TaskGroupService = Depends(get_task_group_service),
+    task_service: TaskService = Depends(get_task_service),
 ):
-    return service.list(
+    task_groups = service.list(
         category, status, include_archived, created_after, created_before
     )
+    counts_by_group = task_service.count_by_status_bulk([tg.id for tg in task_groups])
+    return [_build_read(tg, counts_by_group.get(tg.id, {})) for tg in task_groups]
 
 
 @router.post("", response_model=TaskGroupRead, status_code=201)
@@ -61,19 +65,7 @@ def get_task_group(
         raise HTTPException(status_code=404, detail="작업 그룹을 찾을 수 없습니다.")
 
     counts = task_service.count_by_status(task_group_id)
-    total = sum(counts.values())
-    done = counts.get(TaskStatus.DONE, 0)
-    percent = round(done / total * 100) if total else 0
-
-    return TaskGroupRead(
-        id=task_group.id,
-        category=task_group.category,
-        name=task_group.name,
-        description=task_group.description,
-        status=task_group.status,
-        is_archived=task_group.is_archived,
-        progress=TaskGroupProgress(total_tasks=total, done_tasks=done, percent=percent),
-    )
+    return _build_read(task_group, counts)
 
 
 @router.patch("/{task_group_id}", response_model=TaskGroupRead)
@@ -110,3 +102,24 @@ def delete_task_group(
         service.delete(task_group_id)
     except TaskGroupNotFoundError:
         raise HTTPException(status_code=404, detail="작업 그룹을 찾을 수 없습니다.")
+
+
+def _build_progress(counts: dict[TaskStatus, int]) -> TaskGroupProgress:
+    total = sum(counts.values())
+    done = counts.get(TaskStatus.DONE, 0)
+    percent = round(done / total * 100) if total else 0
+    return TaskGroupProgress(total_tasks=total, done_tasks=done, percent=percent)
+
+
+def _build_read(task_group: TaskGroup, counts: dict[TaskStatus, int]) -> TaskGroupRead:
+    """목록·상세가 같은 방식으로 응답을 만들도록 조립을 한곳에 모은다."""
+    return TaskGroupRead(
+        id=task_group.id,
+        category=task_group.category,
+        name=task_group.name,
+        description=task_group.description,
+        status=task_group.status,
+        is_archived=task_group.is_archived,
+        created_at=task_group.created_at,
+        progress=_build_progress(counts),
+    )

@@ -3,6 +3,7 @@ from typing import Iterator
 from fastapi import Depends
 from sqlmodel import Session
 
+from adapters.outbound.holiday.kr_holiday_adapter import holiday_calendar_adapter
 from adapters.outbound.oci_database.oci_database_usage_adapter import (
     database_usage_adapter,
 )
@@ -124,6 +125,7 @@ def get_task_service(session: Session = Depends(get_db_session)) -> TaskService:
         dependency_repository=SqlTaskDependencyRepository(session),
         meeting_task_repository=SqlMeetingTaskRepository(session),
         task_group_repository=SqlTaskGroupRepository(session),
+        holiday_calendar=holiday_calendar_adapter,
     )
 
 
