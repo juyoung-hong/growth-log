@@ -81,4 +81,5 @@ class SqlTaskGroupRepository(TaskGroupRepository):
             description=row.description,
             status=TaskStatus(row.status),
             is_archived=row.is_archived == "Y",
+            created_at=row.created_at,
         )
