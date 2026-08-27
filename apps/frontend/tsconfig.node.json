@@ -22,6 +22,11 @@
 
     // `vue-tsc --build` produces a .tsbuildinfo file for incremental type-checking.
     // Specified here to keep it out of the root directory.
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+
+    // Node.js 네이티브 설정 로더는 확장자 없는 import를 해석하지 못해
+    // vitest.config.ts가 './vite.config.ts'를 확장자까지 적어 가져온다.
+    // 이 프로젝트는 noEmit(타입 검사 전용)이라 경로가 깨질 일이 없다.
+    "allowImportingTsExtensions": true
   }
 }
