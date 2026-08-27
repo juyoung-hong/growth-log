@@ -32,6 +32,16 @@ export default defineConfigWithVueTs(
     files: ['src/**/__tests__/*'],
   },
 
+  {
+    // shadcn-vue가 생성하는 프리미티브는 Button·Badge처럼 한 단어가 원칙이라
+    // Vue의 다단어 컴포넌트명 규칙을 이 디렉터리에서만 끈다.
+    name: 'app/shadcn-ui-primitives',
+    files: ['src/shared/ui/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
+  },
+
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
   skipFormatting,
