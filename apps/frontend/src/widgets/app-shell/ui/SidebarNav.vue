@@ -20,7 +20,7 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <nav class="border-border bg-background flex w-52 shrink-0 flex-col gap-1 border-r p-3">
+  <nav class="border-border bg-background flex w-52 shrink-0 flex-col gap-1 border-r px-3 pt-5 pb-3">
     <RouterLink
       v-for="item in ITEMS"
       :key="item.to"

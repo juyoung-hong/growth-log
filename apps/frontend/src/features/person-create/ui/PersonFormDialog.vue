@@ -7,11 +7,11 @@ import { Button } from '@/shared/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 
 /**
  * 등록·수정을 겸한다. person이 있으면 수정, 없으면 등록 — 화면(pages/persons)이
@@ -105,28 +105,33 @@ async function submit() {
   <Dialog v-model:open="open">
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>{{ isEdit ? '인물 정보 수정' : '인물 등록' }}</DialogTitle>
+        <!-- ConfirmDialog와 같은 언어: 제목은 볼드·가운데 정렬. -->
+        <DialogTitle class="text-center font-bold">
+          {{ isEdit ? '인물 정보 수정' : '인물 등록' }}
+        </DialogTitle>
       </DialogHeader>
 
       <form class="flex flex-col gap-4" @submit.prevent="submit">
-        <div class="flex gap-2">
-          <Button
-            size="small"
-            :variant="form.category === '회사' ? 'fill' : 'weak'"
-            :color="form.category === '회사' ? 'primary' : 'light'"
-            @click="form.category = '회사'"
-          >
-            회사
-          </Button>
-          <Button
-            size="small"
-            :variant="form.category === '개인' ? 'fill' : 'weak'"
-            :color="form.category === '개인' ? 'primary' : 'light'"
-            @click="form.category = '개인'"
-          >
-            개인
-          </Button>
-        </div>
+        <!--
+          Button 두 개짜리 토글 대신 Tabs를 쓴다 — 상단 ScopeSwitch가
+          같은 회사/개인 선택을 이미 Tabs로 표현하고 있어서, 폼 안에서도
+          같은 부품을 쓰는 쪽이 "이건 회사·개인 중 하나를 고르는
+          자리"라는 걸 일관되게 전달한다. size="small"만 준다 — 폼
+          안이라 ScopeSwitch(size 기본값 large)보다 한 단계 조밀하게.
+          stretch로 폭을 꽉 채운다 — 버튼 토글이었을 때 폭을 채웠던
+          것과 같은 이유로, 짧은 글자 두 개만 왼쪽에 몰려 있고 나머지가
+          빈 공간으로 남는 걸 피한다.
+        -->
+        <Tabs v-model="form.category">
+          <TabsList size="small" stretch>
+            <TabsTrigger value="회사">
+              회사
+            </TabsTrigger>
+            <TabsTrigger value="개인">
+              개인
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <Input
           v-model="form.name"
@@ -161,14 +166,33 @@ async function submit() {
           label-option="sustain"
         />
 
-        <DialogFooter>
-          <Button variant="weak" color="light" :disabled="submitting" @click="open = false">
+        <!--
+          ConfirmDialog와 같은 방식 — DialogFooter(공용 부품, 오른쪽 정렬
+          + 보통 크기)를 쓰지 않고, 버튼 두 개가 패널 폭을 꽉 채우며
+          붙는 형태를 직접 구성한다. -mx-4 -mb-4로 DialogContent의
+          p-4 밖으로 버튼을 빼고, 바깥쪽 두 모서리만 패널과 같은
+          반지름으로 둥글린다.
+        -->
+        <div class="-mx-4 -mb-4 grid grid-cols-2">
+          <Button
+            display="full"
+            variant="weak"
+            color="light"
+            class="rounded-none rounded-bl-lg"
+            :disabled="submitting"
+            @click="open = false"
+          >
             취소
           </Button>
-          <Button type="submit" :loading="submitting">
+          <Button
+            type="submit"
+            display="full"
+            class="rounded-none rounded-br-lg"
+            :loading="submitting"
+          >
             {{ isEdit ? '저장' : '등록' }}
           </Button>
-        </DialogFooter>
+        </div>
       </form>
     </DialogContent>
   </Dialog>

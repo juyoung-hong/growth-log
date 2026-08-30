@@ -36,8 +36,8 @@
 
 | | TDS 기본값 | 이 구현 |
 |---|---|---|
-| Title | `typography="t4"`(20px) `fontWeight="bold"` `color=grey800` | `text-20 font-bold text-grey-800` — **그대로 따름** |
-| Description | `typography="t6"`(15px) `fontWeight="medium"` `color=grey600` | `text-15 font-medium text-grey-700` — **색만 예외** |
+| Title | `typography="t4"`(20px) `fontWeight="bold"` `color=grey800` | `text-20 font-bold text-grey-800 text-center` — 정렬만 추가(아래 참고) |
+| Description | `typography="t6"`(15px) `fontWeight="medium"` `color=grey600` | `text-16 font-medium text-grey-700 text-center` — **색·크기·정렬 예외**(아래 참고) |
 
 ## `cancelButton`/`confirmButton`을 슬롯으로 열지 않은 이유
 
@@ -63,9 +63,20 @@ TDS 기본값을 그대로 따르되 **Description의 글자색만 예외**를 �
 
 Title의 `grey800`(`11.51:1`)은 대비 문제가 없어 TDS 기본값을 그대로 따랐다. `font-bold`도 TDS 기본값(`bold`)을 따른 것이다 — `DialogTitle`의 기본 굵기는 `font-medium`이라, `ConfirmDialog`에서 명시적으로 덮어써야 했다.
 
-## 버튼 크기 — TDS `large` 대신 우리 기본값 `medium`을 쓴다
+**나중에 추가**: 제목·본문 모두 가운데 정렬(`text-center`)로 바꾸고, 본문을 `text-15`에서 `text-16`으로 한 단계 키웠다. 버튼(15px)보다 확인창의 메시지(16px)가 먼저 눈에 들어와야 한다는 사용성 피드백을 반영한 것이다 — 실사용 화면(인물 삭제 확인창)을 보고 나온 조정이라, TDS 문서에는 없는 이 프로젝트만의 판단이다.
 
-TDS는 ConfirmDialog의 두 버튼에 `size="large"`를 기본값으로 준다. 이건 TDS Mobile이 손가락 터치를 기준으로 크기를 잡기 때문이다 — 이 프로젝트는 데스크톱 웹이고, 다이얼로그 패널 자체도 `max-w-sm`(384px)으로 좁게 잡혀 있다. `large`(48px)를 강제하면 좁은 패널에 비해 버튼이 과하게 커 보인다. `Button`의 기본값(`medium`, 38px)을 그대로 두는 쪽이 이 프로젝트의 실제 밀도에 맞는다 — [03-button.md](./03-button.md)에서 전체 기본 크기를 `xlarge`(TDS) 대신 `medium`으로 정한 것과 같은 판단이다.
+이 조정 과정에서 **버그 하나를 발견했다**: `text-16`처럼 이 프로젝트의 커스텀 글자 크기 스케일을 글자 색과 함께 쓰면, `tailwind-merge`가 둘을 같은 충돌 그룹으로 오인해 하나를 조용히 지워버리고 있었다. `shared/lib/utils.ts`에서 고쳤고, 원인과 영향 범위는 [02-typography.md](./02-typography.md)에 자세히 남겼다 — `DialogDescription`·`AlertDescription`·`CardDescription`·`TableCaption` 네 컴포넌트가 이 버그로 글자색을 못 그리고 있었다.
+
+## 버튼 — 크기는 `medium`을 유지하되, 배치를 완전히 바꿨다
+
+TDS는 ConfirmDialog의 두 버튼에 `size="large"`(48px)를 기본값으로 준다. 이 프로젝트는 데스크톱 웹이고 다이얼로그 패널도 `max-w-sm`(384px)으로 좁아서, 처음에는 `Button`의 기본값(`medium`, 38px)을 그대로 썼다 — [03-button.md](./03-button.md)에서 전체 기본 크기를 `xlarge`(TDS) 대신 `medium`으로 정한 것과 같은 판단이었다.
+
+**나중에 배치를 바꿨다.** 처음엔 `DialogFooter`(공용 부품, 오른쪽 정렬 + 회색 배경 + 테두리)를 그대로 썼는데, 실제 화면에서 보니 글자는 작고 버튼만 큰 탓에 하단 회색 띠가 본문보다 훨씬 두꺼운 덩어리로 보였다. 두 번 고쳤다.
+
+1. **회색 배경 제거** — `DialogFooter`의 `bg-muted/50`를 빼고 `border-t` 하나로만 구분하게 했다(이 변경은 공용 부품이라 [06-dialog.md](./06-dialog.md)에 남겼다).
+2. **DialogFooter 자체를 그만 쓴다** — 그 정도로는 부족했다. TDS ConfirmDialog 참고 레이아웃(버튼 두 개가 패널 폭을 정확히 반씩 채우며 붙는 형태)을 보고, 오른쪽 정렬이라는 `DialogFooter`의 전제 자체가 확인창과 안 맞는다고 판단했다. `DialogFooter`를 아예 쓰지 않고, `-mx-4 -mb-4 grid grid-cols-2`로 `DialogContent`의 여백 밖까지 버튼을 채운 뒤, 바깥쪽 두 모서리만 패널과 같은 반지름(`rounded-bl-lg`/`rounded-br-lg`)으로 둥글였다. 버튼 크기(`medium`)는 그대로다 — 이번에 바뀐 건 버튼이 차지하는 **폭**이지 버튼 자체의 크기가 아니다.
+
+`features/person-create/ui/PersonFormDialog.vue`의 등록/취소 버튼도 같은 이유로 같은 방식을 따른다 — `DialogFooter`는 지금 이 프로젝트의 어떤 다이얼로그도 실제로 안 쓴다. 그래도 컴포넌트 자체는 지우지 않았다 — 여러 액션이 필요한 미래의 다이얼로그가 생기면 그때 다시 필요해질 수 있는 원시 부품이기 때문이다([06-dialog.md](./06-dialog.md) 참고).
 
 ## TDS에서 가져오지 않은 것
 

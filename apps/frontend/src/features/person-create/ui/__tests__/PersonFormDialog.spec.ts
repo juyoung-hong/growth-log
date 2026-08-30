@@ -43,6 +43,22 @@ describe('personFormDialog', () => {
     document.body.innerHTML = ''
   })
 
+  it('제목은 볼드·가운데 정렬이고, 버튼 두 개는 바깥쪽 모서리만 둥글게 패널을 꽉 채운다', async () => {
+    const { page } = await mountDialog(null)
+    const title = page.find('[data-slot=dialog-title]')
+    expect(title.classes()).toContain('font-bold')
+    expect(title.classes()).toContain('text-center')
+
+    // form 안의 마지막 두 button이 취소/등록 — ConfirmDialog와 같은
+    // twMerge 충돌(rounded-[10px] vs rounded-bl-lg)이 여기서도 풀려야 한다.
+    const buttons = page.findAll('form button')
+    const [cancelBtn, submitBtn] = buttons.slice(-2)
+    expect(cancelBtn?.classes()).toContain('rounded-bl-lg')
+    expect(cancelBtn?.classes()).not.toContain('rounded-[10px]')
+    expect(submitBtn?.classes()).toContain('rounded-br-lg')
+    expect(submitBtn?.classes()).not.toContain('rounded-[10px]')
+  })
+
   it('등록 모드에서는 빈 폼과 "인물 등록" 제목을 보여준다', async () => {
     const { page } = await mountDialog(null)
     expect(page.text()).toContain('인물 등록')
@@ -75,6 +91,25 @@ describe('personFormDialog', () => {
 
     expect(store.create).not.toHaveBeenCalled()
     expect(page.text()).toContain('이름을 입력하세요.')
+  })
+
+  it('탭에서 "개인"을 고르면 그 값으로 제출된다', async () => {
+    const { page } = await mountDialog(null)
+    const store = usePersonsStore()
+    vi.mocked(store.create).mockResolvedValue(undefined as never)
+
+    // reka-ui의 Tabs는 클릭이 아니라 포커스로 선택된다(WAI-ARIA "automatic
+    // activation" 패턴) — 실제 브라우저에서는 클릭이 포커스도 같이
+    // 옮기지만, jsdom에 dispatchEvent로 흉내낸 클릭은 포커스를 옮기지
+    // 않는다. 그래서 focus를 직접 trigger한다.
+    const personalTab = page.findAll('[role=tab]').find(t => t.text() === '개인')
+    await personalTab?.trigger('focus')
+    await page.findAll('input')[FIELD.name]?.setValue('김도현')
+    await page.find('form').trigger('submit')
+    await nextTick()
+    await nextTick()
+
+    expect(store.create).toHaveBeenCalledWith(expect.objectContaining({ category: '개인' }))
   })
 
   it('등록에 성공하면 store.create를 호출하고 다이얼로그를 닫는다', async () => {
