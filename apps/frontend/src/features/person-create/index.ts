@@ -1,0 +1,1 @@
+export { default as PersonFormDialog } from './ui/PersonFormDialog.vue'
