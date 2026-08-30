@@ -12,8 +12,10 @@ export class ApiError extends Error {
 /** 백엔드 호출 공통 처리. 에러는 ApiError로 통일해서 던진다. */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    // init을 먼저 펼쳐야 headers가 아래 병합본으로 확정된다.
+    // 순서를 뒤집으면 호출자가 headers를 넘길 때 Content-Type이 통째로 사라진다.
     ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
 
   if (!response.ok) {
