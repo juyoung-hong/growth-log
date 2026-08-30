@@ -27,7 +27,7 @@ export const tabsListVariants = cva(
   // 탭마다 따로 밑줄을 그리면 탭 사이 간격(gap)에서 선이 끊겨 보인다 —
   // 기준선을 목록 쪽에 한 번만 그리고, 선택된 탭의 파란 강조선(TabsTrigger)이
   // 그 위에 겹치게 해서 하나로 이어진 선처럼 보이게 한다.
-  'group/tabs-list relative inline-flex w-fit shrink-0 items-center after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-grey-200',
+  'group/tabs-list relative inline-flex shrink-0 items-center after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-grey-200',
   {
     variants: {
       size: {
@@ -41,10 +41,19 @@ export const tabsListVariants = cva(
         true: 'flex-nowrap overflow-x-auto',
         false: 'flex-nowrap',
       },
+      // TDS 원본에는 없는 옵션이다. Tabs를 페이지 내비게이션이 아니라
+      // 폼 안의 값 선택기(예: 인물 등록 폼의 회사/개인)로 쓸 때는, 항목이
+      // 자기 글자 폭만큼만 차지하고 나머지가 빈 공간으로 남는 게 어색하다
+      // — 버튼 토글이었다면 꽉 채웠을 자리이므로 Tabs로 바꿔도 그래야 한다.
+      stretch: {
+        true: 'w-full',
+        false: 'w-fit',
+      },
     },
     defaultVariants: {
       size: 'large',
       fluid: false,
+      stretch: false,
     },
   },
 )

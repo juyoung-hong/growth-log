@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
@@ -96,28 +95,46 @@ function onEscapeKeyDown(event: Event) {
         <!-- TDS 기본값(title: grey800·bold / description: grey600·medium)을
              따르되, description 색만 grey700으로 바꿨다. grey600은 흰
              배경과 3.32:1로 WCAG AA(4.5)에 못 미친다 — 02-typography.md에서
-             이미 한 번 고친 문제라 여기서 되풀이하지 않는다. -->
-        <DialogTitle class="text-20 font-bold text-grey-800">
+             이미 한 번 고친 문제라 여기서 되풀이하지 않는다. 제목·본문
+             모두 가운데 정렬하고, 본문(16px)이 버튼 글자(15px)보다
+             크게 — 확인창의 메시지가 버튼보다 눈에 먼저 들어와야 한다. -->
+        <DialogTitle class="text-20 text-center font-bold text-grey-800">
           {{ title }}
         </DialogTitle>
-        <DialogDescription v-if="description" class="text-15 font-medium text-grey-700">
+        <DialogDescription v-if="description" class="text-16 text-center font-medium text-grey-700">
           {{ description }}
         </DialogDescription>
       </DialogHeader>
 
-      <DialogFooter>
-        <!-- TDS CancelButton 기본값: type=dark, style=weak -->
-        <Button variant="weak" color="dark" :disabled="loading" @click="cancel">
+      <!--
+        DialogFooter(공용 부품)를 쓰지 않는다. 그건 폼 다이얼로그처럼
+        "오른쪽 정렬된 보통 크기 버튼"에 맞춘 것이고, 확인창은 버튼
+        두 개가 패널 폭을 꽉 채우며 나란히 붙는 쪽이 메시지에 눈길이
+        먼저 가고 오조작도 줄인다 — TDS ConfirmDialog 참고 레이아웃.
+        -mx-4 -mb-4로 DialogContent의 p-4 여백 밖으로 버튼을 그대로
+        빼고, 바깥쪽 두 모서리만 패널과 같은 반지름으로 둥글린다.
+      -->
+      <div class="-mx-4 -mb-4 grid grid-cols-2">
+        <Button
+          display="full"
+          variant="weak"
+          color="dark"
+          class="rounded-none rounded-bl-lg"
+          :disabled="loading"
+          @click="cancel"
+        >
           {{ cancelText }}
         </Button>
         <Button
+          display="full"
           :color="danger ? 'danger' : 'primary'"
+          class="rounded-none rounded-br-lg"
           :loading="loading"
           @click="emit('confirm')"
         >
           {{ confirmText }}
         </Button>
-      </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 </template>

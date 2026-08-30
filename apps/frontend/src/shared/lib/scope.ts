@@ -1,4 +1,5 @@
 import type { Scope } from '@/shared/api'
+import type { BadgeVariants } from '@/shared/ui/badge'
 
 /**
  * 개인/회사 구분값의 URL 표기와 API 표기를 오간다.
@@ -10,6 +11,11 @@ import type { Scope } from '@/shared/api'
 export const SCOPE_PARAMS = ['company', 'personal'] as const
 
 export type ScopeParam = (typeof SCOPE_PARAMS)[number]
+
+export const SCOPE_BADGE_COLOR: Record<Scope, BadgeVariants['color']> = {
+  '회사': 'blue',
+  '개인': 'purple',
+}
 
 const PARAM_TO_SCOPE: Record<ScopeParam, Scope> = {
   company: '회사',

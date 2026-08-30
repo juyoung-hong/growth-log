@@ -22,11 +22,16 @@ const forwardedProps = useForwardProps(delegatedProps)
   <TabsTrigger
     data-slot="tabs-trigger"
     :class="cn(
-      'relative inline-flex h-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-0.5 font-medium text-grey-700 outline-none transition-colors',
+      'relative inline-flex h-full items-center justify-center gap-1.5 whitespace-nowrap px-0.5 font-medium text-grey-700 outline-none transition-colors',
       'hover:text-grey-900 focus-visible:ring-3 focus-visible:ring-ring/50',
       'disabled:pointer-events-none disabled:opacity-40',
       'data-active:font-bold data-active:text-grey-900',
       'group-data-[size=large]/tabs-list:text-17 group-data-[size=small]/tabs-list:text-14',
+      // stretch=false(기본)면 자기 글자 폭만큼만 차지한다(shrink-0으로 안
+      // 찌그러지게). stretch=true면 항목마다 남는 폭을 균등하게 나눠 갖는다
+      // — TabsList가 이미 justify-center를 각 트리거에 주고 있어 늘어난
+      // 폭 안에서 글자는 그대로 가운데에 남는다.
+      'group-data-[stretch=false]/tabs-list:shrink-0 group-data-[stretch=true]/tabs-list:flex-1',
       // 회색 기준선은 TabsList가 목록 전체 폭에 한 번만 그린다(index.ts).
       // 여기서는 선택된 탭 위에만 파란 강조선을 겹친다 — z-10으로 기준선
       // 위에 그려지게 해서 끊김 없이 하나로 이어진 선처럼 보인다.

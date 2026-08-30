@@ -20,6 +20,7 @@ TDS의 `TabProps`와 `TabItemProps`는 다음과 같다.
 | `onChange` | Tab(루트) | `(index, key) => void`, 필수 | Reka의 `v-model`(`update:modelValue`) — 아래 설명 |
 | `selected` | Tab.Item | `boolean`, 필수 | 구현 안 함 — Reka의 값 매칭으로 이미 됨(아래 설명) |
 | `redBean` | Tab.Item | `boolean`, 기본 `false` | `TabsTrigger`에 그대로 구현 |
+| `stretch` | — | TDS에 없음 | `TabsList`에 새로 추가(아래 설명) |
 
 ### 왜 `size`/`fluid`/`itemGap`/`ariaLabel`을 `TabsList`로 옮겼나
 
@@ -64,6 +65,23 @@ itemGap: number             // px 단위 탭 사이 간격. 안 주면 기본 16
 
 TDS 지침대로 기본은 스크롤을 켜지 않는다 — 4개를 넘겨서 잘리거나 줄바꿈되면 "여기 `fluid`가 필요하다"는 신호가 눈에 바로 보여야 한다. 조용히 줄바꿈시키면 그 신호를 놓치고 레이아웃이 왜 이런지 나중에 헷갈린다.
 
+## `stretch` — TDS에 없는, 이 프로젝트가 새로 더한 옵션
+
+```
+stretch: boolean = false    // 폭을 꽉 채우고 항목마다 폭을 균등하게 나눈다
+```
+
+TDS Tab 문서는 이 옵션을 두지 않는다. TDS의 Tab은 항상 **페이지 내비게이션**(할일목록/회의록/참고자료처럼 화면을 갈아 끼우는 용도)이라, 탭이 자기 글자 폭만큼만 차지하고 나머지가 빈 공간으로 남는 게 자연스럽다. 그런데 이 프로젝트는 Tabs를 **폼 안의 값 선택기**로도 쓴다 — 인물 등록 폼의 회사/개인 선택이 그 예다. 원래 `Button` 두 개를 나란히 둔 토글이었는데, 상단 `ScopeSwitch`와 같은 회사/개인 개념을 표현 방식만 다르게(Button vs Tabs) 쓰는 게 어색하다고 판단해 `Tabs`로 통일했다. 그러면서 "값 선택기"라는 원래 성격(폭을 꽉 채워야 자연스럽다)까지 잃으면 안 되므로, `stretch`를 추가해 두 성격을 다 만족시켰다.
+
+```html
+<!-- TabsList가 group/tabs-list이고 data-stretch를 흘려보낸다 -->
+<div class="group/tabs-list ..." data-stretch="true">
+  <!-- TabsTrigger는 그 값을 group-data-[stretch=true]/tabs-list: 선택자로 읽는다 -->
+  <button class="... group-data-[stretch=false]/tabs-list:shrink-0 group-data-[stretch=true]/tabs-list:flex-1">
+```
+
+`size`가 이미 쓰던 것과 같은 메커니즘이다(`TabsList`의 `data-*` 속성을 `TabsTrigger`가 `group-data-[...]/tabs-list:` 선택자로 읽는다). `shrink-0`/`flex-1`을 무조건 하나로 정해 두지 않고 **둘 다 조건부 선택자로만 존재**하게 한 이유가 있다 — `flex-1`을 그냥 덧붙이는 override 방식도 가능은 했지만(twMerge가 `shrink-0`을 실제로 지워준다는 걸 확인했다), 이미 `size`가 "기본값을 하드코딩하지 않고 둘 다 조건부로 둔다"는 방식을 쓰고 있어서 그 관례를 그대로 따랐다 — 나중에 이 컴포넌트를 보는 사람이 "왜 size는 조건부고 stretch는 override 방식이지"처럼 두 가지 패턴을 기억할 필요가 없다.
+
 ## `redBean` — 새 소식 알림 점
 
 ```
@@ -86,6 +104,7 @@ redBean: boolean = false
 1. [01-colors.md](./01-colors.md)·[02-typography.md](./02-typography.md)를 먼저 옮긴다.
 2. 원본이 여러 시각 변형(세그먼트/밑줄 등)을 제공해도, **문서에 실제로 선택 가능한 축으로 나와 있는지** 확인한다. 기반 UI 라이브러리(shadcn 등)가 자체적으로 추가한 변형이 원본 디자인 시스템에 없으면, 그 변형은 지우고 원본이 실제로 쓰는 스타일 하나로 통일한다.
 3. 원본이 명시적 boolean(`selected` 등)으로 상태를 넘기라고 해도, 기반 프리미티브 라이브러리(Reka UI 등)가 값 매칭 같은 선언적 방식으로 이미 처리한다면 그쪽을 쓴다 — 상태를 직접 계산해서 넘기는 코드를 새로 만들지 않는다.
+4. 원본 디자인 시스템에 없는 옵션이라도, 이 프로젝트에서 그 컴포넌트를 원본과 다른 용도(페이지 내비게이션이 아니라 폼 안의 값 선택기 등)로 쓰게 되면 필요한 만큼 추가한다. 단, 새 옵션을 이미 있는 메커니즘(`data-*` + `group-data-[...]:` 선택자 등)과 같은 방식으로 만든다 — 컴포넌트 하나 안에 서로 다른 두 가지 조건부 스타일링 패턴이 섞이지 않게 한다.
 4. 원본이 컴포넌트 계층 없이 평평하게 props를 두더라도(TDS의 `Tab` 루트처럼), 이 프로젝트의 실제 컴포넌트 구조(Root/List/Trigger 등 여러 계층)에서 각 prop이 의미상 어느 계층에 속하는지 판단해서 그쪽으로 옮긴다.
 5. 부모 컴포넌트의 설정(크기 등)을 자식 여러 개에 일일이 전달하고 싶지 않으면, `data-*` 속성 + `group-data-[key=value]/name:` 선택자로 전달한다 — prop을 모든 자식에 반복해서 넘기지 않아도 된다.
 6. 보조기술 안내가 `title` 속성처럼 상호작용(호버 등)에 의존하는 방식으로 문서화돼 있으면, 항상 읽히는 `sr-only` 텍스트로 바꾸는 걸 고려한다.
