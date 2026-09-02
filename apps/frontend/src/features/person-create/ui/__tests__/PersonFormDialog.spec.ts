@@ -43,20 +43,18 @@ describe('personFormDialog', () => {
     document.body.innerHTML = ''
   })
 
-  it('제목은 볼드·가운데 정렬이고, 버튼 두 개는 바깥쪽 모서리만 둥글게 패널을 꽉 채운다', async () => {
+  it('제목은 볼드·가운데 정렬이고, 버튼 두 개는 네 모서리가 온전히 둥근 채로 폭을 나눠 채운다', async () => {
     const { page } = await mountDialog(null)
     const title = page.find('[data-slot=dialog-title]')
     expect(title.classes()).toContain('font-bold')
     expect(title.classes()).toContain('text-center')
 
-    // form 안의 마지막 두 button이 취소/등록 — ConfirmDialog와 같은
-    // twMerge 충돌(rounded-[10px] vs rounded-bl-lg)이 여기서도 풀려야 한다.
+    // form 안의 마지막 두 button이 취소/등록 — 모서리를 잘라내지 않고
+    // Button 기본 반지름(rounded-[10px])을 그대로 유지해야 한다.
     const buttons = page.findAll('form button')
     const [cancelBtn, submitBtn] = buttons.slice(-2)
-    expect(cancelBtn?.classes()).toContain('rounded-bl-lg')
-    expect(cancelBtn?.classes()).not.toContain('rounded-[10px]')
-    expect(submitBtn?.classes()).toContain('rounded-br-lg')
-    expect(submitBtn?.classes()).not.toContain('rounded-[10px]')
+    expect(cancelBtn?.classes()).toContain('rounded-[10px]')
+    expect(submitBtn?.classes()).toContain('rounded-[10px]')
   })
 
   it('등록 모드에서는 빈 폼과 "인물 등록" 제목을 보여준다', async () => {

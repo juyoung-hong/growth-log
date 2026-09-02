@@ -74,9 +74,11 @@ TDS는 ConfirmDialog의 두 버튼에 `size="large"`(48px)를 기본값으로 �
 **나중에 배치를 바꿨다.** 처음엔 `DialogFooter`(공용 부품, 오른쪽 정렬 + 회색 배경 + 테두리)를 그대로 썼는데, 실제 화면에서 보니 글자는 작고 버튼만 큰 탓에 하단 회색 띠가 본문보다 훨씬 두꺼운 덩어리로 보였다. 두 번 고쳤다.
 
 1. **회색 배경 제거** — `DialogFooter`의 `bg-muted/50`를 빼고 `border-t` 하나로만 구분하게 했다(이 변경은 공용 부품이라 [06-dialog.md](./06-dialog.md)에 남겼다).
-2. **DialogFooter 자체를 그만 쓴다** — 그 정도로는 부족했다. TDS ConfirmDialog 참고 레이아웃(버튼 두 개가 패널 폭을 정확히 반씩 채우며 붙는 형태)을 보고, 오른쪽 정렬이라는 `DialogFooter`의 전제 자체가 확인창과 안 맞는다고 판단했다. `DialogFooter`를 아예 쓰지 않고, `-mx-4 -mb-4 grid grid-cols-2`로 `DialogContent`의 여백 밖까지 버튼을 채운 뒤, 바깥쪽 두 모서리만 패널과 같은 반지름(`rounded-bl-lg`/`rounded-br-lg`)으로 둥글였다. 버튼 크기(`medium`)는 그대로다 — 이번에 바뀐 건 버튼이 차지하는 **폭**이지 버튼 자체의 크기가 아니다.
+2. **DialogFooter 자체를 그만 쓴다** — 그 정도로는 부족했다. TDS ConfirmDialog 참고 레이아웃(버튼 두 개가 패널 폭을 정확히 반씩 채우며 붙는 형태)을 보고, 오른쪽 정렬이라는 `DialogFooter`의 전제 자체가 확인창과 안 맞는다고 판단했다. `DialogFooter`를 아예 쓰지 않고 `grid grid-cols-2`로 버튼 두 개가 폭을 반씩 채우게 했다.
 
-`features/person-create/ui/PersonFormDialog.vue`의 등록/취소 버튼도 같은 이유로 같은 방식을 따른다 — `DialogFooter`는 지금 이 프로젝트의 어떤 다이얼로그도 실제로 안 쓴다. 그래도 컴포넌트 자체는 지우지 않았다 — 여러 액션이 필요한 미래의 다이얼로그가 생기면 그때 다시 필요해질 수 있는 원시 부품이기 때문이다([06-dialog.md](./06-dialog.md) 참고).
+`features/person-create/ui/PersonFormDialog.vue`·`features/task-group-create/ui/TaskGroupFormDialog.vue`의 등록/취소 버튼도 같은 이유로 같은 방식을 따른다 — `DialogFooter`는 지금 이 프로젝트의 어떤 다이얼로그도 실제로 안 쓴다. 그래도 컴포넌트 자체는 지우지 않았다 — 여러 액션이 필요한 미래의 다이얼로그가 생기면 그때 다시 필요해질 수 있는 원시 부품이기 때문이다([06-dialog.md](./06-dialog.md) 참고).
+
+**한 번 더 고쳤다 — 모서리를 잘라내지 않는다.** 처음엔 `-mx-4 -mb-4`로 `DialogContent`의 `p-4` 여백 밖까지 버튼을 밀어내고, 바깥쪽 두 모서리만 패널과 같은 반지름(`rounded-bl-lg`/`rounded-br-lg`)으로 둥글이는 방식을 썼다. 실제로 보니 각 버튼이 네 모서리 중 두 개(안쪽 두 개, 서로 맞닿는 쪽)는 직각으로 잘려 있어 "버튼이 잘린 것처럼" 보였다 — 참고 이미지로 받은 실제 TDS 스타일 확인창은 두 버튼이 **간격을 두고 떨어져 있고, 각자 네 모서리가 모두 온전히 둥글다.** `-mx-4 -mb-4`를 지워 `DialogContent`의 `p-4` 여백을 그대로 살리고, 버튼 사이에는 `gap-3`(12px)만 준다. 각 버튼은 `Button`의 기본 반지름(`rounded-[10px]`, medium 기준)을 덮어쓰지 않아 네 모서리가 모두 둥글다.
 
 ## TDS에서 가져오지 않은 것
 
