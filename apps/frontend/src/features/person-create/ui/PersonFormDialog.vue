@@ -169,16 +169,14 @@ async function submit() {
         <!--
           ConfirmDialog와 같은 방식 — DialogFooter(공용 부품, 오른쪽 정렬
           + 보통 크기)를 쓰지 않고, 버튼 두 개가 패널 폭을 꽉 채우며
-          붙는 형태를 직접 구성한다. -mx-4 -mb-4로 DialogContent의
-          p-4 밖으로 버튼을 빼고, 바깥쪽 두 모서리만 패널과 같은
-          반지름으로 둥글린다.
+          나란히 붙는 형태를 직접 구성한다. DialogContent의 p-4 여백은
+          그대로 두어(모서리가 잘리지 않게) 버튼 사이에만 간격을 준다.
         -->
-        <div class="-mx-4 -mb-4 grid grid-cols-2">
+        <div class="grid grid-cols-2 gap-3">
           <Button
             display="full"
             variant="weak"
             color="light"
-            class="rounded-none rounded-bl-lg"
             :disabled="submitting"
             @click="open = false"
           >
@@ -187,7 +185,6 @@ async function submit() {
           <Button
             type="submit"
             display="full"
-            class="rounded-none rounded-br-lg"
             :loading="submitting"
           >
             {{ isEdit ? '저장' : '등록' }}

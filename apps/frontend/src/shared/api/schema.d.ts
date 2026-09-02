@@ -836,6 +836,8 @@ export interface components {
             status: components["schemas"]["TaskStatus"];
             /** Is Archived */
             is_archived: boolean;
+            /** Created At */
+            created_at: string | null;
             progress?: components["schemas"]["TaskGroupProgress"] | null;
         };
         /** TaskGroupUpdate */
@@ -864,6 +866,8 @@ export interface components {
             due_date: string | null;
             /** Completed At */
             completed_at: string | null;
+            /** Created At */
+            created_at: string | null;
         };
         /** TaskScheduleUpdate */
         TaskScheduleUpdate: {

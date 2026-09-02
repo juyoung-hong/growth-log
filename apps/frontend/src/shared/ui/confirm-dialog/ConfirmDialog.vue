@@ -111,15 +111,15 @@ function onEscapeKeyDown(event: Event) {
         "오른쪽 정렬된 보통 크기 버튼"에 맞춘 것이고, 확인창은 버튼
         두 개가 패널 폭을 꽉 채우며 나란히 붙는 쪽이 메시지에 눈길이
         먼저 가고 오조작도 줄인다 — TDS ConfirmDialog 참고 레이아웃.
-        -mx-4 -mb-4로 DialogContent의 p-4 여백 밖으로 버튼을 그대로
-        빼고, 바깥쪽 두 모서리만 패널과 같은 반지름으로 둥글린다.
+        DialogContent의 p-4 여백은 그대로 두고(모서리가 잘리지 않게)
+        버튼 두 개 사이에만 간격을 준다 — 각 버튼은 Button 기본 반지름
+        그대로 네 모서리가 온전히 둥글다.
       -->
-      <div class="-mx-4 -mb-4 grid grid-cols-2">
+      <div class="grid grid-cols-2 gap-3">
         <Button
           display="full"
           variant="weak"
           color="dark"
-          class="rounded-none rounded-bl-lg"
           :disabled="loading"
           @click="cancel"
         >
@@ -128,7 +128,6 @@ function onEscapeKeyDown(event: Event) {
         <Button
           display="full"
           :color="danger ? 'danger' : 'primary'"
-          class="rounded-none rounded-br-lg"
           :loading="loading"
           @click="emit('confirm')"
         >

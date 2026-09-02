@@ -36,18 +36,18 @@ describe('confirmDialog', () => {
     expect(description.classes()).toContain('text-16')
   })
 
-  it('버튼 두 개가 각자 바깥쪽 모서리만 둥글게, 안쪽은 각지게 자리한다', async () => {
+  it('버튼 두 개가 네 모서리 모두 둥근 채로 간격을 두고 나란히 자리한다', async () => {
     const { page } = await mountConfirm({})
     const buttons = page.findAll('button')
     expect(buttons).toHaveLength(2)
 
-    // Button의 기본 rounded-[10px]가 twMerge로 덮여 사라졌는지까지 확인한다 —
-    // 안 그러면 모서리가 사각/둥근 두 값이 겹쳐 렌더링 결과가 애매해진다.
+    // 모서리를 잘라내지 않는다 — Button 기본 rounded-[10px]가 그대로 남아야 한다.
     const [cancelBtn, confirmBtn] = buttons
-    expect(cancelBtn?.classes()).toContain('rounded-bl-lg')
-    expect(cancelBtn?.classes()).not.toContain('rounded-[10px]')
-    expect(confirmBtn?.classes()).toContain('rounded-br-lg')
-    expect(confirmBtn?.classes()).not.toContain('rounded-[10px]')
+    expect(cancelBtn?.classes()).toContain('rounded-[10px]')
+    expect(confirmBtn?.classes()).toContain('rounded-[10px]')
+
+    const footer = cancelBtn?.element.parentElement
+    expect(footer?.className).toContain('gap-3')
   })
 
   it('취소를 누르면 열림 상태가 꺼지고 cancel을 emit한다', async () => {
