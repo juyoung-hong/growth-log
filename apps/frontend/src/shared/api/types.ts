@@ -11,9 +11,12 @@ export type TaskGroupCreate = Schemas['TaskGroupCreate']
 export type TaskGroupUpdate = Schemas['TaskGroupUpdate']
 export type TaskGroupProgress = Schemas['TaskGroupProgress']
 
-export type Scope = Schemas['Scope']
 export type TaskStatus = Schemas['TaskStatus']
 export type TaskRead = Schemas['TaskRead']
+export type TaskCreate = Schemas['TaskCreate']
+export type TaskStatusUpdate = Schemas['TaskStatusUpdate']
+
+export type Scope = Schemas['Scope']
 export type MeetingRead = Schemas['MeetingRead']
 export type StorageUsageRead = Schemas['StorageUsageRead']
 export type StorageQuota = Schemas['StorageQuota']
