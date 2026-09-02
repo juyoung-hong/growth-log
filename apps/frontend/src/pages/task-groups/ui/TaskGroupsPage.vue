@@ -6,14 +6,13 @@ import { useTaskGroupsStore } from '@/entities/task-group'
 import { TaskGroupFormDialog } from '@/features/task-group-create'
 import { ScopeSwitch } from '@/features/scope-switch'
 import { ApiError } from '@/shared/api'
-import { parseScopeParam, SCOPE_BADGE_COLOR, toScope } from '@/shared/lib/scope'
+import { parseScopeParam, toScope } from '@/shared/lib/scope'
 import { TASK_STATUS_BADGE_COLOR } from '@/shared/lib/task-status'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { Progress } from '@/shared/ui/progress'
-import { Separator } from '@/shared/ui/separator'
 
 const route = useRoute()
 const router = useRouter()
@@ -166,12 +165,6 @@ async function confirmDelete() {
             {{ taskGroup.progress.done_tasks }}/{{ taskGroup.progress.total_tasks }} 완료
           </span>
         </div>
-
-        <Separator variant="full" class="my-4" />
-
-        <Badge :color="SCOPE_BADGE_COLOR[taskGroup.category]">
-          {{ taskGroup.category }}
-        </Badge>
       </Card>
     </div>
 

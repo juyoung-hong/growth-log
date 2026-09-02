@@ -67,12 +67,20 @@ describe('taskGroupsPage', () => {
     expect(page.text()).toContain('표시할 프로젝트가 없습니다.')
   })
 
-  it('카드에 이름·상태·진행률·구분을 보여준다', () => {
+  it('카드에 이름·상태·진행률을 보여준다', () => {
     const { page } = mountPage([taskGroup])
     expect(page.text()).toContain('메일서버 이중화')
     expect(page.text()).toContain('진행중')
     expect(page.text()).toContain('7/10 완료')
-    expect(page.text()).toContain('회사')
+  })
+
+  it('카드에 구분(회사/개인) 배지는 안 보인다 — 위 ScopeSwitch 탭이 이미 구분을 나타낸다', () => {
+    const { page } = mountPage([taskGroup])
+    // "회사"라는 글자 자체는 설명(description)에도 우연히 들어갈 수 있어
+    // 배지 전용 slot 속성으로 확인한다.
+    const badgeTexts = page.findAll('[data-slot=badge]').map(b => b.text())
+    expect(badgeTexts).not.toContain('회사')
+    expect(badgeTexts).not.toContain('개인')
   })
 
   it('완료 포함이 꺼져 있으면(기본) 완료 상태 카드를 숨긴다', () => {
