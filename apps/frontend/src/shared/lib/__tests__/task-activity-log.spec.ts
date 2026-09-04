@@ -27,4 +27,22 @@ describe('formatActivityEvent', () => {
   it('알 수 없는 event_type이면 라벨 매핑 없이 원문을 그대로 보여준다', () => {
     expect(formatActivityEvent({ event_type: '보관', old_value: null, new_value: null, reason: null })).toBe('보관')
   })
+
+  it('담당자 변경은 old_value 없이 new_value만 이어 붙인다', () => {
+    expect(formatActivityEvent({
+      event_type: '담당자',
+      old_value: null,
+      new_value: '홍주영 추가',
+      reason: null,
+    })).toBe('담당자 변경: 홍주영 추가')
+  })
+
+  it('선행 관계 변경은 old_value 없이 new_value만 이어 붙인다', () => {
+    expect(formatActivityEvent({
+      event_type: '선행',
+      old_value: null,
+      new_value: 'DNS 등록 대기 제거',
+      reason: null,
+    })).toBe('선행 관계 변경: DNS 등록 대기 제거')
+  })
 })

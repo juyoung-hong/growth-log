@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from pydantic import BaseModel, field_serializer
 
+from adapters.inbound.api.schemas._datetime import to_kst_iso
 from adapters.inbound.api.schemas.person import PersonRead
 from adapters.inbound.api.schemas.task import TaskRead
 from domain.meeting import MeetingStatus
-
-KST = timezone(timedelta(hours=9))
 
 
 class MeetingCreate(BaseModel):
@@ -39,11 +38,4 @@ class MeetingRead(BaseModel):
 
     @field_serializer("scheduled_at")
     def serialize_scheduled_at(self, value: datetime) -> str:
-        """Oracle TIMESTAMP는 시간대 정보 없이 저장되므로, 여기서 읽어온
-        값은 항상 naive datetime이다. 그 값이 UTC라는 걸 우리가 알고
-        있으니(쓸 때 항상 UTC로 저장했으므로) 명시적으로 라벨을 붙인 뒤
-        KST로 변환한다 — 이 replace가 없으면 파이썬이 naive datetime을
-        시스템 로컬 시간대로 잘못 해석해서 변환이 틀어진다."""
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(KST).isoformat()
+        return to_kst_iso(value)

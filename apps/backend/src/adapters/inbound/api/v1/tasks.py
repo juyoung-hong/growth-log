@@ -105,7 +105,7 @@ def update_task_schedule(
 ):
     try:
         return service.change_schedule(
-            task_id, body.start_date, body.due_date, body.reason
+            task_id, body.start_date, body.due_date, body.estimated_days, body.reason
         )
     except TaskNotFoundError:
         raise HTTPException(status_code=404, detail="Task를 찾을 수 없습니다.")

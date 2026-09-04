@@ -4,7 +4,13 @@ import { ref } from 'vue'
 import { useTasksStore } from '@/entities/task'
 import { ApiError } from '@/shared/api'
 
-const props = defineProps<{ task: TaskRead }>()
+/**
+ * blockingDependency가 있으면(부모가 이미 조회해 둔, 아직 완료되지 않은
+ * 선행 태스크 하나) 체크를 막는다 — 백엔드는 이 검증을 하지 않지만
+ * (change_status가 dependency를 조회조차 하지 않는다), 프론트에서
+ * 선행이 다 끝나기 전엔 완료할 수 없게 한다는 설계 결정이다.
+ */
+const props = defineProps<{ task: TaskRead, blockingDependency?: TaskRead }>()
 
 const store = useTasksStore()
 const pending = ref(false)
@@ -24,7 +30,7 @@ const error = ref('')
  * 이 코드베이스의 다른 store들과 일관적이다).
  */
 async function complete() {
-  if (props.task.status === '완료' || pending.value) return
+  if (props.task.status === '완료' || pending.value || props.blockingDependency) return
 
   const previousStatus = props.task.status
   store.setLocalStatus(props.task.id, '완료')
@@ -49,7 +55,8 @@ async function complete() {
       type="checkbox"
       class="accent-primary size-4"
       :checked="task.status === '완료'"
-      :disabled="task.status === '완료' || pending"
+      :disabled="task.status === '완료' || pending || !!blockingDependency"
+      :title="blockingDependency ? `선행 태스크(${blockingDependency.name})가 끝나야 완료할 수 있습니다.` : undefined"
       :aria-label="`${task.name} 완료 처리`"
       @change="complete"
     >

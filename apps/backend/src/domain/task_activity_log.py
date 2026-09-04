@@ -13,13 +13,15 @@ from enum import Enum
 
 
 class ActivityEventType(str, Enum):
-    """활동이력 이벤트 종류. '담당자'는 5단계(담당자 기능)부터 실제로 쓰인다."""
+    """활동이력 이벤트 종류. '담당자'·'선행'은 각각 5·6단계(담당자·선행 관계
+    기능)부터 실제로 쓰인다."""
 
     REGISTERED = "등록"
     STATUS = "상태"
     ASSIGNEE = "담당자"
     SCHEDULE = "일정"
     COMPLETED = "완료"
+    DEPENDENCY = "선행"
 
 
 @dataclass

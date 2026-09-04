@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from application.ports.outbound.task_activity_log_repository import (
+    TaskActivityLogRepository,
+)
 from application.ports.outbound.task_dependency_repository import (
     TaskDependencyRepository,
 )
@@ -9,6 +12,7 @@ from application.ports.outbound.task_repository import TaskRepository
 from domain.common.exceptions import InvalidFieldError
 from domain.exceptions import DependencyTaskGroupMismatchError, TaskNotFoundError
 from domain.task import Task
+from domain.task_activity_log import ActivityEventType, TaskActivityLog
 
 
 class TaskDependencyService:
@@ -18,9 +22,11 @@ class TaskDependencyService:
         self,
         dependency_repository: TaskDependencyRepository,
         task_repository: TaskRepository,
+        activity_log_repository: TaskActivityLogRepository,
     ) -> None:
         self.dependency_repository = dependency_repository
         self.task_repository = task_repository
+        self.activity_log_repository = activity_log_repository
 
     def list(self, task_id: int) -> list[Task]:
         self._get_task(task_id)
@@ -47,11 +53,28 @@ class TaskDependencyService:
 
         if not self.dependency_repository.exists(task_id, depends_on_task_id):
             self.dependency_repository.add(task_id, depends_on_task_id)
+            self.activity_log_repository.add(
+                TaskActivityLog(
+                    id=None,
+                    task_id=task_id,
+                    event_type=ActivityEventType.DEPENDENCY,
+                    new_value=f"{depends_on_task.name} 추가",
+                )
+            )
         return depends_on_task
 
     def remove(self, task_id: int, depends_on_task_id: int) -> None:
         self._get_task(task_id)
+        depends_on_task = self._get_task(depends_on_task_id)
         self.dependency_repository.remove(task_id, depends_on_task_id)
+        self.activity_log_repository.add(
+            TaskActivityLog(
+                id=None,
+                task_id=task_id,
+                event_type=ActivityEventType.DEPENDENCY,
+                new_value=f"{depends_on_task.name} 제거",
+            )
+        )
 
     def _get_task(self, task_id: int) -> Task:
         task = self.task_repository.get(task_id)

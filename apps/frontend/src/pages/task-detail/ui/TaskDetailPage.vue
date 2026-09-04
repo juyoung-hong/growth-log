@@ -12,6 +12,9 @@ import { Button } from '@/shared/ui/button'
 import { Separator } from '@/shared/ui/separator'
 import { TaskActivityLog } from '@/widgets/task-activity-log'
 import { TaskComments } from '@/widgets/task-comments'
+import { TaskAssigneeManage } from '@/features/task-assignee-manage'
+import { TaskDependencyManage } from '@/features/task-dependency-manage'
+
 
 const route = useRoute()
 const taskId = computed(() => Number(route.params.taskId))
@@ -83,6 +86,14 @@ const scheduleOpen = ref(false)
         일정 변경
       </Button>
     </div>
+
+    <Separator variant="full" />
+
+    <TaskAssigneeManage />
+
+    <Separator variant="full" />
+
+    <TaskDependencyManage />
 
     <Separator variant="full" />
 

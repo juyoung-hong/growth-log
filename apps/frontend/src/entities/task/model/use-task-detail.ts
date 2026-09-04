@@ -1,4 +1,5 @@
 import type {
+  PersonRead,
   TaskActivityLogRead,
   TaskCommentRead,
   TaskRead,
@@ -7,24 +8,27 @@ import type {
 } from '@/shared/api'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { addTaskAssignee } from '../api/add-task-assignee'
+import { addTaskDependency } from '../api/add-task-dependency'
 import { createTaskComment } from '../api/create-task-comment'
 import { deleteTaskComment } from '../api/delete-task-comment'
 import { getTask } from '../api/get-task'
 import { listTaskActivityLog } from '../api/list-task-activity-log'
+import { listTaskAssignees } from '../api/list-task-assignees'
 import { listTaskComments } from '../api/list-task-comments'
+import { listTaskDependencies } from '../api/list-task-dependencies'
+import { removeTaskAssignee } from '../api/remove-task-assignee'
+import { removeTaskDependency } from '../api/remove-task-dependency'
 import { updateTaskComment } from '../api/update-task-comment'
 import { updateTaskSchedule } from '../api/update-task-schedule'
 import { updateTaskStatus } from '../api/update-task-status'
 
-/**
- * 태스크 상세 화면 하나가 이 store를 쓴다. useTasksStore(레벨2의 할일
- * 목록)와는 다른 store다 — 여긴 태스크 "한 건"과 그 부속물(활동이력·댓글)을
- * 같이 들고 있다.
- */
 export const useTaskDetailStore = defineStore('task-detail', () => {
   const task = ref<TaskRead | null>(null)
   const activityLog = ref<TaskActivityLogRead[]>([])
   const comments = ref<TaskCommentRead[]>([])
+  const assignees = ref<PersonRead[]>([])
+  const dependencies = ref<TaskRead[]>([])
   const loading = ref(false)
   const currentTaskId = ref<number | null>(null)
 
@@ -32,14 +36,18 @@ export const useTaskDetailStore = defineStore('task-detail', () => {
     currentTaskId.value = taskId
     loading.value = true
     try {
-      const [taskResult, activityLogResult, commentsResult] = await Promise.all([
+      const [taskResult, activityLogResult, commentsResult, assigneesResult, dependenciesResult] = await Promise.all([
         getTask(taskId),
         listTaskActivityLog(taskId),
         listTaskComments(taskId),
+        listTaskAssignees(taskId),
+        listTaskDependencies(taskId),
       ])
       task.value = taskResult
       activityLog.value = activityLogResult
       comments.value = commentsResult
+      assignees.value = assigneesResult
+      dependencies.value = dependenciesResult
     }
     finally {
       loading.value = false
@@ -79,17 +87,34 @@ export const useTaskDetailStore = defineStore('task-detail', () => {
     await reload()
   }
 
+  async function addAssignee(personId: number) {
+    if (currentTaskId.value == null) throw new Error('불러온 태스크가 없습니다.')
+    await addTaskAssignee(currentTaskId.value, personId)
+    await reload()
+  }
+
+  async function removeAssignee(personId: number) {
+    if (currentTaskId.value == null) throw new Error('불러온 태스크가 없습니다.')
+    await removeTaskAssignee(currentTaskId.value, personId)
+    await reload()
+  }
+
+  async function addDependency(dependsOnTaskId: number) {
+    if (currentTaskId.value == null) throw new Error('불러온 태스크가 없습니다.')
+    await addTaskDependency(currentTaskId.value, dependsOnTaskId)
+    await reload()
+  }
+
+  async function removeDependency(dependsOnTaskId: number) {
+    if (currentTaskId.value == null) throw new Error('불러온 태스크가 없습니다.')
+    await removeTaskDependency(currentTaskId.value, dependsOnTaskId)
+    await reload()
+  }
+
   return {
-    task,
-    activityLog,
-    comments,
-    loading,
-    load,
-    reload,
-    changeStatus,
-    changeSchedule,
-    addComment,
-    editComment,
-    removeComment,
+    task, activityLog, comments, assignees, dependencies, loading,
+    load, reload, changeStatus, changeSchedule,
+    addComment, editComment, removeComment,
+    addAssignee, removeAssignee, addDependency, removeDependency,
   }
 })

@@ -3,8 +3,10 @@ import { createTestingPinia } from '@pinia/testing'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { listTaskDependencies } from '@/entities/task'
 import { getTaskGroup } from '@/entities/task-group'
 import TaskGroupDetailPage from '../TaskGroupDetailPage.vue'
+
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn<(to: unknown) => void>() }))
 
 // TaskGroupsPage.spec.ts와 같은 이유로 useRoute·useRouter를 고정값으로
@@ -21,6 +23,15 @@ vi.mock('vue-router', () => ({
 vi.mock('@/entities/task-group', () => ({
   getTaskGroup: vi.fn<(id: number) => Promise<TaskGroupRead>>(),
 }))
+
+// 화면에 그려진 각 태스크마다 선행 태스크를 병렬로 조회한다 — 실제
+// fetch가 나가지 않도록 막는다. entities/task의 공개 API만 통해서
+// mock한다(fsd/no-public-api-sidestep) — useTasksStore 등 나머지
+// export는 그대로 두고 listTaskDependencies만 갈아 끼운다.
+vi.mock('@/entities/task', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/entities/task')>()
+  return { ...actual, listTaskDependencies: vi.fn<typeof actual.listTaskDependencies>() }
+})
 
 const taskGroup: TaskGroupRead = {
   id: 1,
@@ -56,8 +67,13 @@ function task(overrides: Partial<TaskRead> = {}): TaskRead {
  * tasksStore.load 순서로 두 번 await하므로, 둘 다 끝나길 nextTick을
  * 몇 번 기다려서 확인한다.
  */
-async function mountPage(tasks: TaskRead[] = [], allTasks: TaskRead[] = tasks) {
+async function mountPage(
+  tasks: TaskRead[] = [],
+  allTasks: TaskRead[] = tasks,
+  dependenciesByTaskId: Record<number, TaskRead[]> = {},
+) {
   vi.mocked(getTaskGroup).mockResolvedValue(taskGroup)
+  vi.mocked(listTaskDependencies).mockImplementation(async taskId => dependenciesByTaskId[taskId] ?? [])
   const wrapper = mount(TaskGroupDetailPage, {
     attachTo: document.body,
     global: {
@@ -70,6 +86,7 @@ async function mountPage(tasks: TaskRead[] = [], allTasks: TaskRead[] = tasks) {
       ],
     },
   })
+  await nextTick()
   await nextTick()
   await nextTick()
   await nextTick()
@@ -181,5 +198,33 @@ describe('taskGroupDetailPage', () => {
     await checkbox.trigger('click')
 
     expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  it('미완료 선행 태스크가 있으면 경고를 보여준다', async () => {
+    const { page } = await mountPage(
+      [task({ id: 1 })],
+      [task({ id: 1 })],
+      { 1: [task({ id: 2, name: 'DNS 등록 대기', status: '보류' })] },
+    )
+    expect(page.text()).toContain('선행: DNS 등록 대기 (보류) ⚠')
+  })
+
+  it('미완료 선행 태스크가 있으면 완료 체크박스가 비활성화된다', async () => {
+    const { page } = await mountPage(
+      [task({ id: 1 })],
+      [task({ id: 1 })],
+      { 1: [task({ id: 2, name: 'DNS 등록 대기', status: '보류' })] },
+    )
+    const checkbox = page.find('input[type=checkbox]').element as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+  })
+
+  it('선행 태스크가 모두 완료면 경고를 보여주지 않는다', async () => {
+    const { page } = await mountPage(
+      [task({ id: 1 })],
+      [task({ id: 1 })],
+      { 1: [task({ id: 2, name: '끝난 선행', status: '완료' })] },
+    )
+    expect(page.text()).not.toContain('⚠')
   })
 })

@@ -506,6 +506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Holidays */
+        get: operations["list_holidays_api_v1_holidays_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -725,10 +742,7 @@ export interface components {
             id: number;
             /** Event Type */
             event_type: string;
-            /**
-             * Event At
-             * Format: date-time
-             */
+            /** Event At */
             event_at: string;
             /** Old Value */
             old_value: string | null;
@@ -755,15 +769,9 @@ export interface components {
             task_id: number;
             /** Content */
             content: string;
-            /**
-             * Created At
-             * Format: date-time
-             */
+            /** Created At */
             created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
+            /** Updated At */
             updated_at: string;
         };
         /** TaskCommentUpdate */
@@ -875,6 +883,8 @@ export interface components {
             start_date?: string | null;
             /** Due Date */
             due_date?: string | null;
+            /** Estimated Days */
+            estimated_days?: number | null;
             /** Reason */
             reason?: string | null;
         };
@@ -2367,6 +2377,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_holidays_api_v1_holidays_get: {
+        parameters: {
+            query: {
+                year: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
             };
             /** @description Validation Error */
             422: {

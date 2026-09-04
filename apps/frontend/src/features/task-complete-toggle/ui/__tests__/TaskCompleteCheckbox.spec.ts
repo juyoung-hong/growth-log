@@ -22,9 +22,9 @@ function task(overrides: Partial<TaskRead> = {}): TaskRead {
   }
 }
 
-function mountCheckbox(t: TaskRead) {
+function mountCheckbox(t: TaskRead, blockingDependency?: TaskRead) {
   const wrapper = mount(TaskCompleteCheckbox, {
-    props: { task: t },
+    props: { task: t, blockingDependency },
     global: {
       plugins: [createTestingPinia({ stubActions: true, createSpy: vi.fn })],
     },
@@ -61,5 +61,23 @@ describe('taskCompleteCheckbox', () => {
     expect(store.setLocalStatus).toHaveBeenNthCalledWith(1, 1, '완료')
     expect(store.setLocalStatus).toHaveBeenNthCalledWith(2, 1, '보류')
     expect(wrapper.text()).toContain('서버 오류')
+  })
+
+  it('미완료 선행 태스크가 있으면 비활성화되고 이유가 title에 보인다', () => {
+    const blockingTask = task({ id: 2, name: 'DNS 등록 대기', status: '보류' })
+    const { wrapper } = mountCheckbox(task({ status: '진행중' }), blockingTask)
+
+    const checkbox = wrapper.find('input[type=checkbox]').element as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+    expect(checkbox.title).toBe('선행 태스크(DNS 등록 대기)가 끝나야 완료할 수 있습니다.')
+  })
+
+  it('미완료 선행 태스크가 있으면 체크해도 completeTask를 호출하지 않는다', async () => {
+    const blockingTask = task({ id: 2, name: 'DNS 등록 대기', status: '보류' })
+    const { wrapper, store } = mountCheckbox(task({ status: '진행중' }), blockingTask)
+
+    await wrapper.find('input[type=checkbox]').trigger('change')
+
+    expect(store.completeTask).not.toHaveBeenCalled()
   })
 })

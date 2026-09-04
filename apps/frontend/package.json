@@ -19,6 +19,7 @@
     "lint:fsd": "steiger ./src"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.3",
     "@lucide/vue": "^1.34.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vueuse/core": "^14.4.0",

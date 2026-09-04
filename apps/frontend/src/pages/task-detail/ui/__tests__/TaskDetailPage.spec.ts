@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { getTaskGroup } from '@/entities/task-group'
 import TaskDetailPage from '../TaskDetailPage.vue'
+import { listTasks } from '@/entities/task'
 
 // TaskGroupDetailPage.spec.ts와 같은 이유로 RouterLink도 mock에 넣는다.
 vi.mock('vue-router', () => ({
@@ -17,6 +18,11 @@ vi.mock('vue-router', () => ({
 vi.mock('@/entities/task-group', () => ({
   getTaskGroup: vi.fn<(id: number) => Promise<TaskGroupRead>>(),
 }))
+
+vi.mock('@/entities/task', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/entities/task')>()
+  return { ...actual, listTasks: vi.fn<typeof actual.listTasks>() }
+})
 
 const task: TaskRead = {
   id: 7, task_group_id: 1, name: '이중화 아키텍처 설계', status: '진행중',
@@ -39,6 +45,7 @@ const taskGroup: TaskGroupRead = {
  */
 async function mountPage() {
   vi.mocked(getTaskGroup).mockResolvedValue(taskGroup)
+  vi.mocked(listTasks).mockResolvedValue([])
   const wrapper = mount(TaskDetailPage, {
     attachTo: document.body,
     global: {
@@ -103,5 +110,11 @@ describe('taskDetailPage', () => {
     const nav = page.find('nav')
     expect(nav.text()).toContain('이중화 아키텍처 설계')
     expect(nav.findAll('a')).toHaveLength(2) // "할일관리"·프로젝트 이름만 링크다
+  })
+
+  it('담당자·선행 태스크 관리 영역을 함께 보여준다', async () => {
+    const { page } = await mountPage()
+    expect(page.text()).toContain('담당자')
+    expect(page.text()).toContain('선행 태스크')
   })
 })

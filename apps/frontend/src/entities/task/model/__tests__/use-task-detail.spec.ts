@@ -1,21 +1,33 @@
-import type { TaskActivityLogRead, TaskCommentRead, TaskRead } from '@/shared/api'
+import type { PersonRead, TaskActivityLogRead, TaskCommentRead, TaskRead } from '@/shared/api'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { addTaskAssignee } from '../../api/add-task-assignee'
+import { addTaskDependency } from '../../api/add-task-dependency'
 import { createTaskComment } from '../../api/create-task-comment'
 import { deleteTaskComment } from '../../api/delete-task-comment'
 import { getTask } from '../../api/get-task'
 import { listTaskActivityLog } from '../../api/list-task-activity-log'
+import { listTaskAssignees } from '../../api/list-task-assignees'
 import { listTaskComments } from '../../api/list-task-comments'
+import { listTaskDependencies } from '../../api/list-task-dependencies'
+import { removeTaskAssignee } from '../../api/remove-task-assignee'
+import { removeTaskDependency } from '../../api/remove-task-dependency'
 import { updateTaskComment } from '../../api/update-task-comment'
 import { updateTaskSchedule } from '../../api/update-task-schedule'
 import { updateTaskStatus } from '../../api/update-task-status'
 import { useTaskDetailStore } from '../use-task-detail'
 
+vi.mock('../../api/add-task-assignee')
+vi.mock('../../api/add-task-dependency')
 vi.mock('../../api/create-task-comment')
 vi.mock('../../api/delete-task-comment')
 vi.mock('../../api/get-task')
 vi.mock('../../api/list-task-activity-log')
+vi.mock('../../api/list-task-assignees')
 vi.mock('../../api/list-task-comments')
+vi.mock('../../api/list-task-dependencies')
+vi.mock('../../api/remove-task-assignee')
+vi.mock('../../api/remove-task-dependency')
 vi.mock('../../api/update-task-comment')
 vi.mock('../../api/update-task-schedule')
 vi.mock('../../api/update-task-status')
@@ -38,12 +50,18 @@ const comment: TaskCommentRead = {
   created_at: '2026-08-16T00:00:00Z', updated_at: '2026-08-16T00:00:00Z',
 }
 
+const person: PersonRead = {
+  id: 1, category: '회사', name: '홍주영', email: null, phone: null, affiliation: null,
+}
+
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
   vi.mocked(getTask).mockResolvedValue(task())
   vi.mocked(listTaskActivityLog).mockResolvedValue([log])
   vi.mocked(listTaskComments).mockResolvedValue([comment])
+  vi.mocked(listTaskAssignees).mockResolvedValue([])
+  vi.mocked(listTaskDependencies).mockResolvedValue([])
 })
 
 describe('useTaskDetailStore', () => {
@@ -105,5 +123,46 @@ describe('useTaskDetailStore', () => {
   it('불러온 적이 없으면 changeStatus가 에러를 던진다', async () => {
     const store = useTaskDetailStore()
     await expect(store.changeStatus('완료')).rejects.toThrow('불러온 태스크가 없습니다.')
+  })
+
+  it('load는 담당자·선행 태스크도 같이 불러 채운다', async () => {
+    vi.mocked(listTaskAssignees).mockResolvedValue([person])
+    vi.mocked(listTaskDependencies).mockResolvedValue([task({ id: 2, name: '선행 태스크' })])
+
+    const store = useTaskDetailStore()
+    await store.load(1)
+
+    expect(store.assignees).toEqual([person])
+    expect(store.dependencies).toEqual([task({ id: 2, name: '선행 태스크' })])
+  })
+
+  it('addAssignee·removeAssignee는 현재 taskId로 호출하고 다시 읽는다', async () => {
+    const store = useTaskDetailStore()
+    await store.load(1)
+    vi.mocked(addTaskAssignee).mockResolvedValue(person)
+    vi.mocked(removeTaskAssignee).mockResolvedValue(undefined)
+
+    await store.addAssignee(1)
+    expect(addTaskAssignee).toHaveBeenCalledWith(1, 1)
+    expect(listTaskAssignees).toHaveBeenCalledTimes(2)
+
+    await store.removeAssignee(1)
+    expect(removeTaskAssignee).toHaveBeenCalledWith(1, 1)
+    expect(listTaskAssignees).toHaveBeenCalledTimes(3)
+  })
+
+  it('addDependency·removeDependency는 현재 taskId로 호출하고 다시 읽는다', async () => {
+    const store = useTaskDetailStore()
+    await store.load(1)
+    vi.mocked(addTaskDependency).mockResolvedValue(task({ id: 2 }))
+    vi.mocked(removeTaskDependency).mockResolvedValue(undefined)
+
+    await store.addDependency(2)
+    expect(addTaskDependency).toHaveBeenCalledWith(1, 2)
+    expect(listTaskDependencies).toHaveBeenCalledTimes(2)
+
+    await store.removeDependency(2)
+    expect(removeTaskDependency).toHaveBeenCalledWith(1, 2)
+    expect(listTaskDependencies).toHaveBeenCalledTimes(3)
   })
 })

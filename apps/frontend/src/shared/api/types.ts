@@ -20,6 +20,8 @@ export type TaskActivityLogRead = Schemas['TaskActivityLogRead']
 export type TaskCommentRead = Schemas['TaskCommentRead']
 export type TaskCommentCreate = Schemas['TaskCommentCreate']
 export type TaskCommentUpdate = Schemas['TaskCommentUpdate']
+export type TaskAssigneeAdd = Schemas['TaskAssigneeAdd']
+export type TaskDependencyAdd = Schemas['TaskDependencyAdd']
 
 export type Scope = Schemas['Scope']
 export type MeetingRead = Schemas['MeetingRead']

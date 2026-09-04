@@ -307,6 +307,59 @@ def test_일정_변경시_마감일을_비우면_기존_예상소요일로_계�
     assert logs[-1].new_value == "2026-08-18 ~ 2026-08-19"
 
 
+def test_일정_변경시_새_예상소요일을_보내면_그걸_저장하고_마감일_계산에_쓴다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(
+        task_group_id=task_group.id, name="작업", estimated_days=2
+    )
+
+    updated = task_service.change_schedule(
+        task.id, start_date=date(2026, 8, 18), due_date=None, estimated_days=4
+    )
+
+    assert updated.estimated_days == 4
+    assert updated.due_date == date(2026, 8, 21)
+
+
+def test_일정_변경시_예상소요일을_생략하면_기존_값을_그대로_쓴다(
+    task_service: TaskService, task_group_repository
+) -> None:
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(
+        task_group_id=task_group.id, name="작업", estimated_days=2
+    )
+
+    updated = task_service.change_schedule(
+        task.id, start_date=date(2026, 8, 18), due_date=None
+    )
+
+    assert updated.estimated_days == 2
+
+
+def test_일정_변경의_마감일_자동계산도_공휴일을_뺀다(
+    task_service: TaskService, task_group_repository, holiday_calendar_port
+) -> None:
+    """create()와 같은 _resolve_due_date를 타므로 일정 변경에서도
+    광복절 대체휴일(08-17 월)을 건너뛰는지 직접 확인한다."""
+    holiday_calendar_port.holidays.add(date(2026, 8, 17))
+    task_group = task_group_repository.add(
+        TaskGroup(id=None, category=Scope.COMPANY, name="그룹")
+    )
+    task = task_service.create(task_group_id=task_group.id, name="작업")
+
+    updated = task_service.change_schedule(
+        task.id, start_date=date(2026, 8, 14), due_date=None, estimated_days=2
+    )
+
+    assert updated.due_date == date(2026, 8, 18)
+
+
 def test_여러_TaskGroup의_상태별_개수를_한번에_센다(
     task_service: TaskService, task_group_repository
 ) -> None:
