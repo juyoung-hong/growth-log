@@ -45,8 +45,7 @@ describe('taskFormDialog', () => {
     vi.setSystemTime(new Date(2026, 7, 18, 10, 0, 0))
     try {
       const { page } = await mountDialog()
-      const startDateInput = page.findAll('input')[2]
-      expect(startDateInput?.element.value).toBe('2026-08-18')
+      expect(page.find('[data-slot=date-picker-trigger]').text()).toBe('2026-08-18')
     }
     finally {
       vi.useRealTimers()
@@ -64,22 +63,32 @@ describe('taskFormDialog', () => {
   })
 
   it('예상소요일·시작일을 채우면 숫자·문자열로 변환해 제출한다', async () => {
-    const { page } = await mountDialog()
-    const store = useTasksStore()
-    vi.mocked(store.create).mockResolvedValue(undefined as never)
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 1, 10, 0, 0)) // 달력이 8월을 펼친 채로 열리게 한다
+    try {
+      const { page } = await mountDialog()
+      const store = useTasksStore()
+      vi.mocked(store.create).mockResolvedValue(undefined as never)
 
-    const inputs = page.findAll('input')
-    await inputs[0]?.setValue('새 태스크')
-    await inputs[1]?.setValue('4')
-    await inputs[2]?.setValue('2026-08-18')
-    await page.find('form').trigger('submit')
-    await nextTick()
+      const inputs = page.findAll('input')
+      await inputs[0]?.setValue('새 태스크')
+      await inputs[1]?.setValue('4')
+      await page.find('[data-slot=date-picker-trigger]').trigger('click')
+      await nextTick()
+      await page.find('[data-date="2026-08-18"]').trigger('click')
+      await nextTick()
+      await page.find('form').trigger('submit')
+      await nextTick()
 
-    expect(store.create).toHaveBeenCalledWith({
-      name: '새 태스크',
-      estimated_days: 4,
-      start_date: '2026-08-18',
-    })
+      expect(store.create).toHaveBeenCalledWith({
+        name: '새 태스크',
+        estimated_days: 4,
+        start_date: '2026-08-18',
+      })
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 
   it('등록에 성공하면 다이얼로그를 닫는다', async () => {

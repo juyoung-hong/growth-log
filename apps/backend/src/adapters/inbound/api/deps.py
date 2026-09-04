@@ -50,6 +50,7 @@ from adapters.outbound.oracle_adb_26ai.task_repository import SqlTaskRepository
 from application.ports.outbound.task_group_size_estimator import TaskGroupSizeEstimator
 from application.services.attachment_service import AttachmentService
 from application.services.export_service import ExportService
+from application.services.holiday_service import HolidayService
 from application.services.meeting_attendee_service import MeetingAttendeeService
 from application.services.meeting_service import MeetingService
 from application.services.meeting_task_service import MeetingTaskService
@@ -75,6 +76,10 @@ def get_task_group_service(
     session: Session = Depends(get_db_session),
 ) -> TaskGroupService:
     return TaskGroupService(SqlTaskGroupRepository(session))
+
+
+def get_holiday_service() -> HolidayService:
+    return HolidayService(holiday_calendar=holiday_calendar_adapter)
 
 
 def get_attachment_service(
@@ -104,6 +109,7 @@ def get_task_dependency_service(
     return TaskDependencyService(
         dependency_repository=SqlTaskDependencyRepository(session),
         task_repository=SqlTaskRepository(session),
+        activity_log_repository=SqlTaskActivityLogRepository(session),
     )
 
 

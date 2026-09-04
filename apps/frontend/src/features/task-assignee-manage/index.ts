@@ -1,0 +1,1 @@
+export { default as TaskAssigneeManage } from './ui/TaskAssigneeManage.vue'

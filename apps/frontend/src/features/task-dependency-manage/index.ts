@@ -1,0 +1,1 @@
+export { default as TaskDependencyManage } from './ui/TaskDependencyManage.vue'

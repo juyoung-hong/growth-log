@@ -29,26 +29,34 @@ async function mountDialog(t: TaskRead) {
 describe('taskScheduleChangeDialog', () => {
   beforeEach(() => { document.body.innerHTML = '' })
 
-  it('열리면 현재 시작일·마감일로 두 칸을 채운다', async () => {
+  it('열리면 현재 예상소요일·시작일·마감일로 칸을 채운다', async () => {
     const { page } = await mountDialog(task())
-    const inputs = page.findAll('input')
-    expect(inputs[0]?.element.value).toBe('2026-08-18')
-    expect(inputs[1]?.element.value).toBe('2026-08-21')
+    const datePickers = page.findAll('[data-slot=date-picker-trigger]')
+    expect(page.findAll('input')[0]?.element.value).toBe('4')
+    expect(datePickers[0]?.text()).toBe('2026-08-18')
+    expect(datePickers[1]?.text()).toBe('2026-08-21')
   })
 
-  it('저장하면 시작일·마감일·사유를 함께 보낸다', async () => {
+  it('예상소요일이 없는 태스크는 빈 칸으로 연다', async () => {
+    const { page } = await mountDialog(task({ estimated_days: null }))
+    expect(page.findAll('input')[0]?.element.value).toBe('')
+  })
+
+  it('저장하면 예상소요일·시작일·마감일·사유를 함께 보낸다', async () => {
     const { page } = await mountDialog(task())
     const store = useTaskDetailStore()
     vi.mocked(store.changeSchedule).mockResolvedValue(undefined as never)
 
-    const inputs = page.findAll('input')
-    await inputs[1]?.setValue('2026-08-25')
+    // 마감일(2026-08-21)이 이미 8월이라 달력을 넘기지 않고도 08-25를 고를 수 있다.
+    await page.findAll('[data-slot=date-picker-trigger]')[1]?.trigger('click')
+    await nextTick()
+    await page.find('[data-date="2026-08-25"]').trigger('click')
     await page.find('textarea').setValue('담당자 휴가로 순연')
     await page.find('form').trigger('submit')
     await nextTick()
 
     expect(store.changeSchedule).toHaveBeenCalledWith({
-      start_date: '2026-08-18', due_date: '2026-08-25', reason: '담당자 휴가로 순연',
+      start_date: '2026-08-18', due_date: '2026-08-25', estimated_days: 4, reason: '담당자 휴가로 순연',
     })
   })
 
@@ -57,11 +65,37 @@ describe('taskScheduleChangeDialog', () => {
     const store = useTaskDetailStore()
     vi.mocked(store.changeSchedule).mockResolvedValue(undefined as never)
 
-    await page.findAll('input')[1]?.setValue('')
+    // 시작일·마감일 둘 다 값이 있어 지우기 버튼이 두 개 뜬다 — 두 번째(마감일)를 누른다.
+    await page.findAll('[aria-label="날짜 지우기"]')[1]?.trigger('click')
     await page.find('form').trigger('submit')
     await nextTick()
 
     expect(store.changeSchedule).toHaveBeenCalledWith(expect.objectContaining({ due_date: null }))
+  })
+
+  it('예상소요일을 새로 적고 마감일을 비운 채 저장하면 새 값과 null 마감일을 함께 보낸다 — 서버가 새 소요일로 재계산한다', async () => {
+    const { page } = await mountDialog(task())
+    const store = useTaskDetailStore()
+    vi.mocked(store.changeSchedule).mockResolvedValue(undefined as never)
+
+    await page.findAll('input')[0]?.setValue('7')
+    await page.findAll('[aria-label="날짜 지우기"]')[1]?.trigger('click')
+    await page.find('form').trigger('submit')
+    await nextTick()
+
+    expect(store.changeSchedule).toHaveBeenCalledWith(expect.objectContaining({ estimated_days: 7, due_date: null }))
+  })
+
+  it('예상소요일을 비운 채 저장하면 null로 보낸다', async () => {
+    const { page } = await mountDialog(task())
+    const store = useTaskDetailStore()
+    vi.mocked(store.changeSchedule).mockResolvedValue(undefined as never)
+
+    await page.findAll('input')[0]?.setValue('')
+    await page.find('form').trigger('submit')
+    await nextTick()
+
+    expect(store.changeSchedule).toHaveBeenCalledWith(expect.objectContaining({ estimated_days: null }))
   })
 
   it('마감일이 시작일보다 빠르다는 400 에러가 오면 마감일 칸에 에러를 건다', async () => {

@@ -144,17 +144,25 @@ class TaskService:
         task_id: int,
         start_date: date | None,
         due_date: date | None,
+        estimated_days: int | None = None,
         reason: str | None = None,
     ) -> Task:
         """일정을 바꾼다. mutate하기 전에 validate_schedule을 직접 호출한다 —
         __post_init__은 이미 만들어진 객체를 setattr로 고칠 땐 재실행되지
         않기 때문이다(0번 섹션 참고).
 
-        마감일을 비워서 보내면 이미 저장된 예상 소요일수를 근거로 자동
-        계산한다 — 그래서 Task를 먼저 읽고 나서 마감일을 확정한다."""
+        마감일을 비워서 보내면 예상 소요일수를 근거로 자동 계산한다.
+        estimated_days를 같이 보내면 그 새 값을 저장하고 계산에도 쓴다 —
+        생략하면(None) 이미 저장된 값을 그대로 쓴다. start_date·due_date와
+        달리 "생략하면 지운다"가 아니다 — 이 필드는 이번에 새로 추가돼
+        기존 호출부(라우터가 아닌 곳에서 직접 부르는 자리)가 이 인자를
+        몰라도 지금까지와 같이 동작해야 하기 때문이다."""
         task = self.get(task_id)
+        resolved_estimated_days = (
+            estimated_days if estimated_days is not None else task.estimated_days
+        )
         resolved_due_date = self._resolve_due_date(
-            start_date, due_date, task.estimated_days
+            start_date, due_date, resolved_estimated_days
         )
         validate_schedule(start_date, resolved_due_date)
 
@@ -163,6 +171,7 @@ class TaskService:
 
         task.start_date = start_date
         task.due_date = resolved_due_date
+        task.estimated_days = resolved_estimated_days
         task = self.task_repository.update(task)
 
         self.activity_log_repository.add(

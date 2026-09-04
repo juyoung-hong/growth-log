@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { TaskGroupRead, TaskStatus } from '@/shared/api'
+import type { TaskGroupRead, TaskRead, TaskStatus } from '@/shared/api'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { getTaskGroup } from '@/entities/task-group'
-import { useTasksStore } from '@/entities/task'
+import { listTaskDependencies, useTasksStore } from '@/entities/task'
 import { TaskCompleteCheckbox } from '@/features/task-complete-toggle'
 import { TaskFormDialog } from '@/features/task-create'
 import { toScopeParam } from '@/shared/lib/scope'
@@ -53,6 +53,23 @@ const statusCounts = computed(() => {
 })
 
 const createOpen = ref(false)
+
+/**
+ * TaskRead에 선행 태스크 목록이 내장돼 있지 않아(#37 조사 결과)
+ * 화면에 보이는 태스크마다 GET .../dependencies를 병렬로 불러 합친다 —
+ * "전체보기"까지 포함하면 요청 수가 늘긴 하지만, 지금 화면에 그려지는
+ * 만큼으로만 범위를 좁혀 뒀다(숨겨진 태스크는 조회하지 않는다).
+ */
+const dependenciesByTaskId = ref<Record<number, TaskRead[]>>({})
+
+watch(visibleTasks, async (tasks) => {
+  const results = await Promise.all(tasks.map(task => listTaskDependencies(task.id)))
+  dependenciesByTaskId.value = Object.fromEntries(tasks.map((task, i) => [task.id, results[i] ?? []]))
+}, { immediate: true })
+
+function incompleteDependency(taskId: number) {
+  return (dependenciesByTaskId.value[taskId] ?? []).find(dep => dep.status !== '완료')
+}
 </script>
 
 <template>
@@ -131,7 +148,7 @@ const createOpen = ref(false)
             @click="openTask(task.id)"
           >
             <span @click.stop>
-              <TaskCompleteCheckbox :task="task" />
+              <TaskCompleteCheckbox :task="task" :blocking-dependency="incompleteDependency(task.id)" />
             </span>
             <div class="min-w-0 flex-1">
               <span
@@ -142,6 +159,11 @@ const createOpen = ref(false)
               </span>
               <p class="text-13 text-grey-700 mt-0.5">
                 {{ formatTaskSchedule(task) }}
+              </p>
+              <!-- 미완료 선행이 있으면 완료 체크를 막는다(백엔드는 이 검증을
+                   하지 않지만 프론트 설계로 막기로 했다) — 이 문구가 그 이유다. -->
+              <p v-if="incompleteDependency(task.id)" class="text-13 text-yellow-800 mt-0.5">
+                선행: {{ incompleteDependency(task.id)!.name }} ({{ incompleteDependency(task.id)!.status }}) ⚠
               </p>
             </div>
             <Badge :color="TASK_STATUS_BADGE_COLOR[task.status]">

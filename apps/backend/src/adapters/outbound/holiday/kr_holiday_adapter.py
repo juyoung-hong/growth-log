@@ -22,5 +22,8 @@ class KrHolidayAdapter(HolidayCalendarPort):
     def is_holiday(self, day: date) -> bool:
         return day in self._holidays
 
+    def list_holidays(self, year: int) -> list[date]:
+        return sorted(holidays.SouthKorea(years=year).keys())
+
 
 holiday_calendar_adapter = KrHolidayAdapter()

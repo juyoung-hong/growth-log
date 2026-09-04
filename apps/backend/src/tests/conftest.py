@@ -442,9 +442,12 @@ def task_assignee_service(
 def task_dependency_service(
     dependency_repository: FakeTaskDependencyRepository,
     task_repository: FakeTaskRepository,
+    activity_log_repository: FakeTaskActivityLogRepository,
 ) -> TaskDependencyService:
     return TaskDependencyService(
-        dependency_repository=dependency_repository, task_repository=task_repository
+        dependency_repository=dependency_repository,
+        task_repository=task_repository,
+        activity_log_repository=activity_log_repository,
     )
 
 
@@ -588,6 +591,9 @@ class FakeHolidayCalendarPort(HolidayCalendarPort):
     def is_holiday(self, day: date) -> bool:
         return day in self.holidays
 
+    def list_holidays(self, year: int) -> list[date]:
+        return sorted(day for day in self.holidays if day.year == year)
+
 
 class FakeDatabaseUsagePort(DatabaseUsagePort):
     def __init__(self, used_bytes: int = 0) -> None:
@@ -710,19 +716,3 @@ def export_service(
         attachment_service=attachment_service,
         object_storage=fake_object_storage,
     )
-
-
-class FakeHolidayCalendarPort(HolidayCalendarPort):
-    """테스트용 공휴일 제공자. 실제 달력과 무관하게 원하는 날만 공휴일로
-    지정해서 마감일 계산 로직만 격리해 검증한다."""
-
-    def __init__(self, holidays: set[date] | None = None) -> None:
-        self.holidays: set[date] = holidays or set()
-
-    def is_holiday(self, day: date) -> bool:
-        return day in self.holidays
-
-
-@pytest.fixture
-def holiday_calendar_port() -> FakeHolidayCalendarPort:
-    return FakeHolidayCalendarPort()

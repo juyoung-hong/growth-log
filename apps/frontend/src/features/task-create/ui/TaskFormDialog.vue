@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { TaskCreate } from '@/shared/api'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useHolidaysStore } from '@/entities/holiday'
 import { useTasksStore } from '@/entities/task'
 import { ApiError } from '@/shared/api'
 import { parseFieldError } from '@/shared/lib/parse-field-error'
 import { Button } from '@/shared/ui/button'
+import { DatePicker } from '@/shared/ui/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -22,12 +24,22 @@ import { Input } from '@/shared/ui/input'
 const open = defineModel<boolean>('open', { required: true })
 
 const store = useTasksStore()
+const holidaysStore = useHolidaysStore()
 
 const form = reactive({
   name: '',
   estimatedDays: '',
   startDate: '',
 })
+
+// 달력이 올해·내년을 넘어가는 날짜까지 색으로 구분해 보여줄 필요는
+// 크지 않다고 보고 두 해로 범위를 좁혔다 — 그보다 먼 미래로 달력을
+// 넘기면 토·일 색만 보이고 공휴일 표시는 안 뜬다.
+const thisYear = new Date().getFullYear()
+const holidays = computed(() => [
+  ...(holidaysStore.byYear[thisYear] ?? []),
+  ...(holidaysStore.byYear[thisYear + 1] ?? []),
+])
 
 const fieldErrors = reactive({ name: '' })
 const submitting = ref(false)
@@ -52,6 +64,7 @@ watch(open, (isOpen) => {
   // 있어도 마감일 자동계산이 안 된다. 오늘을 기본값으로 채워 두고,
   // 사용자가 다르게 시작할 계획이면 직접 바꾸게 한다.
   form.startDate = todayISODate()
+  holidaysStore.ensure([thisYear, thisYear + 1])
 })
 
 async function submit() {
@@ -117,12 +130,11 @@ async function submit() {
           label-option="sustain"
           suffix="일"
         />
-        <Input
+        <DatePicker
           v-model="form.startDate"
-          variant="box"
-          type="date"
           label="시작일"
           label-option="sustain"
+          :holidays="holidays"
         />
 
         <!-- ConfirmDialog·PersonFormDialog·TaskGroupFormDialog와 같은

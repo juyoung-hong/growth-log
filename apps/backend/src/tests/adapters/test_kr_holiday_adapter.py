@@ -41,3 +41,17 @@ def test_주말은_공휴일로_치지_않는다(adapter: KrHolidayAdapter) -> N
     """주말 여부는 도메인의 is_weekend가 따로 판단한다 —
     포트는 공휴일만 답한다."""
     assert not adapter.is_holiday(date(2026, 8, 22))
+
+
+def test_연도의_공휴일_목록을_날짜순으로_돌려준다(adapter: KrHolidayAdapter) -> None:
+    holidays_2026 = adapter.list_holidays(2026)
+
+    assert date(2026, 1, 1) in holidays_2026
+    assert date(2026, 9, 25) in holidays_2026
+    assert holidays_2026 == sorted(holidays_2026)
+
+
+def test_다른_연도의_공휴일은_섞이지_않는다(adapter: KrHolidayAdapter) -> None:
+    holidays_2026 = adapter.list_holidays(2026)
+
+    assert all(day.year == 2026 for day in holidays_2026)
