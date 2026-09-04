@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { TaskGroupRead, TaskStatus } from '@/shared/api'
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { getTaskGroup } from '@/entities/task-group'
 import { useTasksStore } from '@/entities/task'
 import { TaskCompleteCheckbox } from '@/features/task-complete-toggle'
 import { TaskFormDialog } from '@/features/task-create'
+import { toScopeParam } from '@/shared/lib/scope'
 import { TASK_STATUS_BADGE_COLOR } from '@/shared/lib/task-status'
 import { formatTaskSchedule } from '@/shared/lib/task-schedule'
 import { Badge } from '@/shared/ui/badge'
@@ -14,7 +15,12 @@ import { Progress } from '@/shared/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 
 const route = useRoute()
+const router = useRouter()
 const taskGroupId = computed(() => Number(route.params.id))
+
+function openTask(taskId: number) {
+  router.push({ name: 'task-detail', params: { id: taskGroupId.value, taskId } })
+}
 
 const taskGroup = ref<TaskGroupRead | null>(null)
 const tasksStore = useTasksStore()
@@ -51,6 +57,19 @@ const createOpen = ref(false)
 
 <template>
   <section v-if="taskGroup" class="flex flex-col gap-5">
+    <!-- breadcrumb: 마지막 조각(지금 이 페이지)은 링크가 아니라 굵은
+         글자로 둔다 — "여기 있다"는 표시이지 갈 곳이 아니다. -->
+    <nav class="text-14 text-grey-700 flex items-center gap-1.5">
+      <RouterLink
+        :to="{ name: 'task-groups', query: { scope: toScopeParam(taskGroup.category) } }"
+        class="hover:text-primary"
+      >
+        할일관리
+      </RouterLink>
+      <span class="text-grey-400" aria-hidden="true">›</span>
+      <span class="text-grey-900 font-medium">{{ taskGroup.name }}</span>
+    </nav>
+
     <div>
       <div class="flex items-center gap-2">
         <h1 class="text-22 font-bold">
@@ -108,9 +127,12 @@ const createOpen = ref(false)
           <li
             v-for="task in visibleTasks"
             :key="task.id"
-            class="bg-grey-100 flex items-center gap-3 rounded-[10px] px-4 py-3"
+            class="bg-grey-100 hover:bg-grey-200 flex cursor-pointer items-center gap-3 rounded-[10px] px-4 py-3 transition-colors"
+            @click="openTask(task.id)"
           >
-            <TaskCompleteCheckbox :task="task" />
+            <span @click.stop>
+              <TaskCompleteCheckbox :task="task" />
+            </span>
             <div class="min-w-0 flex-1">
               <span
                 class="text-15"

@@ -37,6 +37,17 @@ export function toScope(param: ScopeParam): Scope {
   return PARAM_TO_SCOPE[param]
 }
 
+const SCOPE_TO_PARAM: Record<Scope, ScopeParam> = {
+  '회사': 'company',
+  '개인': 'personal',
+}
+
+/** API 표기 -> URL 표기. toScope의 반대 방향 — 상세 화면에서 목록으로
+ * 돌아갈 때 지금 보던 구분(회사/개인) 탭을 그대로 유지하는 데 쓴다. */
+export function toScopeParam(scope: Scope): ScopeParam {
+  return SCOPE_TO_PARAM[scope]
+}
+
 /**
  * 쿼리 파라미터를 안전한 ScopeParam으로 좁힌다.
  * 값이 없거나 이상하면 기본값 'company'로 떨어뜨린다 —

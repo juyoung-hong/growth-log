@@ -5,10 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { getTaskGroup } from '@/entities/task-group'
 import TaskGroupDetailPage from '../TaskGroupDetailPage.vue'
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn<(to: unknown) => void>() }))
 
-// TaskGroupsPage.spec.ts와 같은 이유로 useRoute를 고정값으로 mock한다.
+// TaskGroupsPage.spec.ts와 같은 이유로 useRoute·useRouter를 고정값으로
+// mock한다. RouterLink도 같이 넣는다 — 실제 vue-router 모듈이 전부
+// mock으로 대체되므로, 안 넣으면 뒤로가기 링크가 컴포넌트를 못 찾는다.
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { id: '1' } }),
+  useRouter: () => ({ push: pushMock }),
+  RouterLink: { props: ['to'], template: '<a :data-to="JSON.stringify(to)"><slot /></a>' },
 }))
 
 // getTaskGroup은 store 액션이 아니라 entities/task-group이 내보내는
@@ -143,5 +148,38 @@ describe('taskGroupDetailPage', () => {
     await meetingsTab?.trigger('focus')
 
     expect(page.text()).toContain('다음 단계에서 만듭니다.')
+  })
+
+  it('항목을 클릭하면 태스크 상세로 이동한다', async () => {
+    const { page } = await mountPage([task({ id: 1 })])
+    const row = page.findAll('li').find(li => li.text().includes('이중화 아키텍처 설계'))
+    await row?.trigger('click')
+
+    expect(pushMock).toHaveBeenCalledWith({ name: 'task-detail', params: { id: 1, taskId: 1 } })
+  })
+
+  it('브레드크럼에서 "할일관리"를 누르면 지금 구분(회사)을 유지한 채 목록으로 간다', async () => {
+    const { page } = await mountPage()
+    const homeLink = page.find('a')
+    expect(homeLink.text()).toContain('할일관리')
+    expect(JSON.parse(homeLink.attributes('data-to') ?? '{}')).toEqual({
+      name: 'task-groups',
+      query: { scope: 'company' },
+    })
+  })
+
+  it('브레드크럼의 마지막 조각(지금 프로젝트)은 링크가 아니라 글자로만 보인다', async () => {
+    const { page } = await mountPage()
+    const nav = page.find('nav')
+    expect(nav.text()).toContain('메일서버 이중화')
+    expect(nav.findAll('a')).toHaveLength(1) // "할일관리"만 링크다
+  })
+
+  it('완료 체크박스를 클릭해도 상세 이동은 일어나지 않는다 — click.stop이 버블링을 막는다', async () => {
+    const { page } = await mountPage([task({ id: 1 })])
+    const checkbox = page.find('input[type=checkbox]')
+    await checkbox.trigger('click')
+
+    expect(pushMock).not.toHaveBeenCalled()
   })
 })
